@@ -132,3 +132,6 @@ dmypy.json
 *.ibd
 *.ibh
 *.imzml
+
+# vs code
+.vscode
