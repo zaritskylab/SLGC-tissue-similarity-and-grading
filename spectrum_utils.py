@@ -1,4 +1,4 @@
-""" TO DO Module Docsting """
+""" This module contain all utils for mass spectrum """
 
 import numpy as np
 import pandas as pd
@@ -7,7 +7,7 @@ from typing import Tuple
 
 class SpectrumUtils():
   """
-  TO DO Class Docsting
+  Class that contain all utils for mass spectrum
   """
   def __init__(self) -> None:
     pass
