@@ -76,7 +76,7 @@ if __name__ == "__main__":
   peaks = [794.5, 834.5, 888.6]
 
   # loop over all imzML files
-  for file in files[45:]:
+  for file in files:
     # parse imzML file
     with ImzMLParser(os.path.join(args.i, file)) as p_l:
       # get file name of imzML file
