@@ -12,7 +12,7 @@ from typing import Tuple
 sns.set_style("white")
 
 
-def mz_length_plot(p: ImzMLParser, title: str) -> Tuple[plt.Figure, plt.Axes]:
+def mz_length_plot(p: ImzMLParser) -> Tuple[plt.Figure, plt.Axes]:
   """
   Method to create intensity plot of mz lengths
 
@@ -54,7 +54,7 @@ def mz_length_plot(p: ImzMLParser, title: str) -> Tuple[plt.Figure, plt.Axes]:
                                          10))
 
   # set plot title
-  ax_f.set_title(f"{title} MZ Lengths")
+  ax_f.set_title("Number of MZ Values")
 
   # change axis
   ax_f.set_xticks([0, max_x], [0, max_x])
@@ -84,6 +84,9 @@ if __name__ == "__main__":
       # get file name of imzML file
       title_l = os.path.splitext(file)[0]
       # get plot mz Lengths
-      fig, ax = mz_length_plot(p_l, title_l)
+      fig, ax = mz_length_plot(p_l)
       # save plot
-      fig.savefig(os.path.join(args.o, title_l + ".png"), transparent=True)
+      fig.savefig(os.path.join(args.o, title_l + ".png"),
+                  transparent=True,
+                  bbox_inches="tight",
+                  pad_inches=0)

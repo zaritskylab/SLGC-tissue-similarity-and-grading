@@ -34,11 +34,14 @@ if __name__ == "__main__":
   # create dataframe for seaborn
   df = pd.DataFrame({"mzs_lengths": mzs_lengths})
 
+  # make font bigger
+  plt.rcParams.update({"font.size": 22})
+
   # create plot and save
-  plt.figure(figsize=(15, 5))
+  plt.figure(figsize=(30, 10))
   sns.histplot(data=df, x="mzs_lengths", bins=1000, kde=True, color="#001AFF")
-  plt.xlabel("Mz Length")
+  plt.xlabel("Number Of Mz Values In Pixel")
   plt.ylabel("Frequency")
-  plt.title("Mz Length Frequency Distribution")
-  plt.savefig(os.path.join(args.o, "Mz Length Frequency Distribution.png"),
+  plt.title("Number Of Mz Values Distribution")
+  plt.savefig(os.path.join(args.o, "Number Of Mz Values Distribution.png"),
               transparent=True)
