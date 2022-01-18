@@ -18,10 +18,10 @@ if __name__ == "__main__":
   config_file = os.path.join(current_directory, "config.ini")
 
   # path to folder containing the imzML-DESI files
-  imzml_folder = os.path.join(current_directory, "imzml-DESI")
+  imzml_folder = os.path.join(os.path.dirname(current_directory), "imzml-DESI")
 
   # path to save the preprocessed imzML-DESI files
-  preprocessed_imzml_folder = os.path.join(current_directory,
+  preprocessed_imzml_folder = os.path.join(os.path.dirname(current_directory),
                                            "preprocessed-imzml-DESI")
 
   # delete existing preprocessed imzML-DESI files
