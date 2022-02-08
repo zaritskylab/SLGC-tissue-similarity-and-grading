@@ -137,6 +137,7 @@ dmypy.json
 .vscode
 
 # folders
+output
 Outputs
 preprocessed-imzml-DESI
 imzml-DESI
