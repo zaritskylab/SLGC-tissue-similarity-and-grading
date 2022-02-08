@@ -32,7 +32,7 @@ class SpectrumUtils():
     # unpack spectrum
     mzs, intensities = spectrum
     # get TIC - total ion count
-    intensities_sum = intensities.sum()
+    intensities_sum = intensities.sum() * (2/3)
     # if TIC is zero no need to divide by TIC
     if  intensities_sum == 0:
       return (mzs, intensities)

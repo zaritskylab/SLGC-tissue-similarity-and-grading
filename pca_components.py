@@ -6,10 +6,9 @@ import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
 from pyimzml.ImzMLParser import ImzMLParser
-from typing import List
 
 
-def pca_components(p_lst: List[ImzMLParser]) -> pd.DataFrame:
+def pca_components(p: ImzMLParser) -> pd.DataFrame:
   """
   Method to get a dataframe with pc components, their corresponding feature
   names, the explained_variance_ratio_ value and cumsum
@@ -26,14 +25,10 @@ def pca_components(p_lst: List[ImzMLParser]) -> pd.DataFrame:
   # create pca object
   pca = PCA()
 
-  ints = []
-  for p in p_lst[:1]:
-    ints.append(
-        np.asarray(
-            [p.getspectrum(idx)[1] for idx, _ in enumerate(p.coordinates)]))
-
-  # fit pca on all intensities
-  pca.fit(np.concatenate(ints))
+  # fit pca
+  pca.fit(
+      np.asarray([p.getspectrum(idx)[1] for idx, _ in enumerate(p.coordinates)
+                 ]))
 
   # get first index that has a explained variance ratio cumsum greater
   # than threshold
@@ -43,7 +38,7 @@ def pca_components(p_lst: List[ImzMLParser]) -> pd.DataFrame:
   most_important = [np.abs(pca.components_[i]).argmax() for i in range(n_pcs)]
 
   # set initial feature_names
-  initial_feature_names = p_lst[0].getspectrum(0)[0]
+  initial_feature_names = p.getspectrum(0)[0]
 
   # get the names by most important indexes
   most_important_names = [
@@ -77,5 +72,7 @@ if __name__ == "__main__":
   files = [file for file in os.listdir(args.i) if file.endswith(".imzML")]
 
   # loop over all imzML files
-  pca_components([ImzMLParser(os.path.join(args.i, file)) for file in files
-                 ]).to_csv(os.path.join(args.o, "pca.csv"), index=False)
+  for file in files:
+    pca_components(ImzMLParser(os.path.join(args.i, file))).to_csv(os.path.join(
+        args.o, f"{file}-pca.csv"),
+                                                                   index=False)
