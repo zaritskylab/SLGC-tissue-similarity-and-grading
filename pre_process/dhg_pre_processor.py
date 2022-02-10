@@ -70,9 +70,7 @@ def pre_process_dhg(i_path: str, o_path: str, mz_start: float, mz_end: float,
   binning = MassResolutionBinning(mz_start, mz_end, mass_resolution)
 
   # get all imzml images names
-  images_names = [
-      join(i_path, file) for file in listdir(i_path) if file.endswith(".imzML")
-  ]
+  images_names = [file for file in listdir(i_path) if file.endswith(".imzML")]
 
   # loop over each imzML image name
   for img_name in tqdm(images_names, desc="Images Loop"):
