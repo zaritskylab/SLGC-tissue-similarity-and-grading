@@ -1,4 +1,4 @@
-""" DESI Human Glioma Cropper
+"""DESI Human Glioma Cropper
 
 Each image in the DESI Human Glioma dataset contains multiple samples.
 This module enables the user to crop all the images to create a
@@ -7,9 +7,11 @@ single image for each sample.
 This file can also be imported as a module and contains the following
 functions:
 
+    * main - module main function.
     * crop_image - function to crop an imzML image to its samples
     * crop_dhg - Function to crop all the images in the DESI Human Glioma
     dataset.
+
 """
 
 import os
@@ -21,6 +23,26 @@ from pathlib import Path
 from tqdm import tqdm
 from pyimzml.ImzMLParser import ImzMLParser
 from pyimzml.ImzMLWriter import ImzMLWriter
+
+
+def main() -> None:
+  """Main function
+
+  """
+  # get command line arguments
+  parser = argparse.ArgumentParser(__doc__)
+  parser.add_argument("-i",
+                      required=True,
+                      help="DESI Human Glioma dataset folder path")
+  parser.add_argument("-o", required=True, help="Output folder")
+  parser.add_argument("-b", required=True, help="Bounding boxes csv file path")
+  args = parser.parse_args()
+
+  # create output folder if doesn't exist
+  Path(args.o).mkdir(parents=True, exist_ok=True)
+
+  # crop all
+  crop_dhg(args.i, args.o, pd.read_csv(args.b))
 
 
 def crop_image(p: ImzMLParser, samples_names: List[str], samples_type: str,
@@ -119,17 +141,4 @@ def crop_dhg(i_path: str, o_path: str, bb_df: pd.DataFrame) -> None:
 
 
 if __name__ == "__main__":
-  # get command line arguments
-  parser = argparse.ArgumentParser(__doc__)
-  parser.add_argument("-i",
-                      required=True,
-                      help="DESI Human Glioma dataset folder path")
-  parser.add_argument("-o", required=True, help="Output folder")
-  parser.add_argument("-b", required=True, help="Bounding boxes csv file path")
-  args = parser.parse_args()
-
-  # create output folder if doesn't exist
-  Path(args.o).mkdir(parents=True, exist_ok=True)
-
-  # crop all
-  crop_dhg(args.i, args.o, pd.read_csv(args.b))
+  main()
