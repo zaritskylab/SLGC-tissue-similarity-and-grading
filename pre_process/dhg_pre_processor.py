@@ -14,7 +14,8 @@ functions:
 
 import argparse
 import configparser
-from os.path import dirname, realpath, join, listdir
+from os import listdir
+from os.path import dirname, realpath, join
 from pathlib import Path
 from tqdm import tqdm
 from pyimzml.ImzMLParser import ImzMLParser
@@ -25,7 +26,7 @@ from binning import MassResolutionBinning
 
 def main() -> None:
   """Main function.
-  
+
   """
   # get command line arguments
   parser = argparse.ArgumentParser(__doc__)
