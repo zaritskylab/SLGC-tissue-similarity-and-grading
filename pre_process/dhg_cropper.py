@@ -46,8 +46,8 @@ def main() -> None:
   # loop over each imzML image name
   for img_name in tqdm(images_names, desc="Images Loop"):
     # get all samples numbers in image
-    samples_nums = bb_df.loc[(bb_df.file_name == img_name),
-                             "sample_num"].to_list()
+    samples_nums_l = bb_df.loc[(bb_df.file_name == img_name),
+                               "sample_num"].to_list()
 
     # get samples type
     s_type = "r.imzML" if "r" in img_name else "s.imzML"
@@ -63,18 +63,20 @@ def main() -> None:
     # parse the imzML image
     with ImzMLParser(os.path.join(args.i, img_name + ".imzML")) as p_l:
       # crop the imzML image
-      crop_image(p_l, samples_paths_l, samples_bb_l)
+      crop_image(p_l, samples_nums_l, samples_paths_l, samples_bb_l)
 
 
-def crop_image(p: ImzMLParser, samples_paths: List[str],
-               samples_bb: pd.DataFrame) -> None:
+def crop_image(p: ImzMLParser, samples_nums: List[int],
+               samples_paths: List[str], samples_bb: pd.DataFrame) -> None:
   """
   Function to crop and imzML image to its samples. 
 
   Args:
       p (ImzMLParser): imzML image.
+      samples_nums (List[int]): list of samples numbers in the same order of 
+      samples_paths.
       samples_paths (List[str]): paths to write each new imzML sample image.
-      samples_bb (pd.DataFrame): sample inside the image.
+      samples_bb (pd.DataFrame): samples inside the image.
   """
   # open a new imzML image for each path in samples_paths
   writers = [ImzMLWriter(path) for path in samples_paths]
@@ -92,7 +94,7 @@ def crop_image(p: ImzMLParser, samples_paths: List[str],
                             (samples_bb.y_min <= y) & (samples_bb.y_max >= y)]
 
     # get sample index
-    sample_idx = samples_bb.index(sample.sample_num.iat[0])
+    sample_idx = samples_nums.index(sample.sample_num.iat[0])
 
     # write spectrum to sample image
     writers[sample_idx].addSpectrum(
