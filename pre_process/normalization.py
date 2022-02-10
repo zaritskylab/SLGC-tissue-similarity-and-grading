@@ -1,11 +1,11 @@
 """Mass spectrometry spectral normalization
 
-This module should be imported and contains the following mass spectrometry 
+This module should be imported and contains the following mass spectrometry
 spectral normalizers:
 
     * SpectrumNormalizer - Base class for a spectrum normalizer.
     * TICNormalizer - Total Ion Count normalizer.
-    dataset.
+
 """
 
 import numpy as np
