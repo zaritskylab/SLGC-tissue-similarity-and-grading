@@ -15,6 +15,7 @@ import os
 import argparse
 import pandas as pd
 from typing import List
+from pathlib import Path
 from tqdm import tqdm
 from pyimzml.ImzMLParser import ImzMLParser
 from pyimzml.ImzMLWriter import ImzMLWriter
@@ -32,6 +33,9 @@ def main() -> None:
   parser.add_argument("-o", required=True, help="Output folder")
   parser.add_argument("-b", required=True, help="Bounding boxes csv file path")
   args = parser.parse_args()
+
+  # create output folder if doesn't exist
+  Path(args.o).mkdir(parents=True, exist_ok=True)
 
   # read bounding boxes csv
   bb_df = pd.read_csv(args.b)
