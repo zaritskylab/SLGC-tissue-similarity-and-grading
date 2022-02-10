@@ -71,7 +71,7 @@ def pre_process_dhg(i_path: str, o_path: str, mz_start: float, mz_end: float,
 
   # get all imzml images names
   images_names = [
-      join(o_path, file) for file in listdir(i_path) if file.endswith(".imzML")
+      join(i_path, file) for file in listdir(i_path) if file.endswith(".imzML")
   ]
 
   # loop over each imzML image name
