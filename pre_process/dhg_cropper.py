@@ -6,9 +6,9 @@ single image for each sample.
 
 This file can also be imported as a module and contains the following
 functions:
-    
+
     * crop_image - function to crop an imzML image to its samples
-    * crop_dhg - Function to crop all the images in the DESI Human Glioma 
+    * crop_dhg - Function to crop all the images in the DESI Human Glioma
     dataset.
 """
 
