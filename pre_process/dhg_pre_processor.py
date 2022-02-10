@@ -14,7 +14,6 @@ functions:
 
 import argparse
 import configparser
-import numpy as np
 from os.path import dirname, realpath, join, listdir
 from pathlib import Path
 from tqdm import tqdm
