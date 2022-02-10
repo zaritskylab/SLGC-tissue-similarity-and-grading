@@ -6,9 +6,10 @@ single image for each sample.
 
 This file can also be imported as a module and contains the following
 functions:
-
-    * main - the main function of the script
+    
     * crop_image - function to crop an imzML image to its samples
+    * crop_dhg - Function to crop all the images in the DESI Human Glioma 
+    dataset.
 """
 
 import os
@@ -67,7 +68,7 @@ def crop_image(p: ImzMLParser, samples_names: List[str], samples_type: str,
                   (samples_y_min <= y) & (samples_y_max >= y))
 
     # write spectrum to sample image
-    writers[sample_idx].addSpectrum(
+    writers[sample_idx][0].addSpectrum(
         mzs, intensities,
         (x - samples_x_min[sample_idx][0], y - samples_y_min[sample_idx][0], z))
 
