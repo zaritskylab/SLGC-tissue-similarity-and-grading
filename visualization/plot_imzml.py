@@ -94,7 +94,7 @@ def main() -> None:
   peaks = [float(peak) for peak in args.p]
 
   # apply preprocessing
-  mz_resolution = config["Default"]["MASS_RESOLUTION"]
+  mz_resolution = float(config["Default"]["MASS_RESOLUTION"])
 
   # loop over all imzML images name
   for img_name in images_names:
