@@ -8,7 +8,7 @@ This file can also be imported as a module and contains the following
 functions:
 
     * main - module main function.
-    * crop_image - function to crop an imzML image to its samples
+    * crop_image - Function to crop an imzML image to its samples
     * crop_dhg - Function to crop all the images in the DESI Human Glioma
     dataset.
 

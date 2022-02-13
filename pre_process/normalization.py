@@ -50,7 +50,7 @@ class TICNormalizer(SpectrumNormalizer):
   def normalize(
       cls, spectrum: Tuple[np.ndarray,
                            np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
-    """Abstract Method to normalize a spectrum total ion count (TIC).
+    """Abstract Method to normalize a spectrum by total ion count (TIC).
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
@@ -71,3 +71,11 @@ class TICNormalizer(SpectrumNormalizer):
     if intensities_sum == 0:
       return (mzs, intensities)
     return (mzs, intensities / intensities_sum)
+
+
+class MedianNormalizer(SpectrumNormalizer):
+  pass
+
+
+class Q3Normalizer(SpectrumNormalizer):
+  pass
