@@ -36,7 +36,7 @@ def main() -> None:
   parser.add_argument("-o", required=True, help="Output folder")
   parser.add_argument("-n",
                       help="Normalization type",
-                      choices=["TIC", "Median", "Mean"])
+                      choices=["TIC", "Median", "Mean", "Q3"])
   parser.add_argument("-r",
                       action="store_true",
                       help="Apply region normalization")
@@ -101,7 +101,10 @@ def pre_process_dhg(i_path: str, o_path: str, norm_type: str, region_norm: bool,
           mzs, intensities = p.getspectrum(idx)
           if normalizer is not None:
             if region_norm:
-              mzs, intensities = normalizer.region_normalize((mzs, intensities))
+              mzs, intensities = normalizer.region_normalize((mzs, intensities),
+                                                             [(mz_start-1, 500),
+                                                              (500, 700),
+                                                              (700, mz_end+1)])
             else:
               mzs, intensities = normalizer.normalize((mzs, intensities))
           mzs, intensities = binning.bin((mzs, intensities))

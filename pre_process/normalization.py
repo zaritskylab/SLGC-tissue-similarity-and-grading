@@ -26,15 +26,17 @@ class SpectrumNormalizer(ABC):
 
   @classmethod
   @abstractmethod
-  def normalize(
-      cls, spectrum: Tuple[np.ndarray,
-                           np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+  def normalize(cls,
+                spectrum: Tuple[np.ndarray, np.ndarray],
+                epsilon: float = 0.001) -> Tuple[np.ndarray, np.ndarray]:
     """Abstract Method to normalize a spectrum.
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
         array of spectrum and second element is the intensity values array
         of spectrum.
+        epsilon (float): small float added to denominator  to avoid dividing
+        by zero.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: first element is mz values array of
@@ -46,15 +48,21 @@ class SpectrumNormalizer(ABC):
 
   @classmethod
   @abstractmethod
-  def region_normalize(
-      cls, spectrum: Tuple[np.ndarray,
-                           np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+  def region_normalize(cls,
+                       spectrum: Tuple[np.ndarray, np.ndarray],
+                       regions: List[Tuple[int, int]],
+                       epsilon: float = 0.001) -> Tuple[np.ndarray, np.ndarray]:
     """Abstract Method to region normalize a spectrum.
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
         array of spectrum and second element is the intensity values array
         of spectrum.
+        regions (List[Tuple[int, int]]): list of regions to apply normalization
+        to. Each element should have a region start value and end value.
+        assumptions is there is no intersection between regions.
+        epsilon (float): small float added to denominator  to avoid dividing
+        by zero.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: first element is mz values array of
@@ -71,15 +79,17 @@ class TICNormalizer(SpectrumNormalizer):
   """
 
   @classmethod
-  def normalize(
-      cls, spectrum: Tuple[np.ndarray,
-                           np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
-    """Method to normalize a spectrum by total ion count (TIC).
+  def normalize(cls,
+                spectrum: Tuple[np.ndarray, np.ndarray],
+                epsilon: float = 0.001) -> Tuple[np.ndarray, np.ndarray]:
+    """Method to normalize a spectrum by total ion count.
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
         array of spectrum and second element is the intensity values array
         of spectrum.
+        epsilon (float): small float added to denominator  to avoid dividing
+        by zero.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: first element is mz values array of
@@ -89,24 +99,25 @@ class TICNormalizer(SpectrumNormalizer):
     """
     # unpack spectrum
     mzs, intensities = np.copy(spectrum)
-    # get TIC
-    tic = intensities.sum()
-    # if TIC is zero no need to divide by TIC
-    # all elements are 0
-    if tic == 0:
-      return (mzs, intensities)
-    return (mzs, intensities / tic)
+    # return tic normalized
+    return (mzs, intensities / (intensities.sum() + epsilon))
 
   @classmethod
-  def region_normalize(
-      cls, spectrum: Tuple[np.ndarray, np.ndarray],
-      regions: List[Tuple[int, int]]) -> Tuple[np.ndarray, np.ndarray]:
-    """Method to region normalize a spectrum by total ion count (TIC).
+  def region_normalize(cls,
+                       spectrum: Tuple[np.ndarray, np.ndarray],
+                       regions: List[Tuple[int, int]],
+                       epsilon: float = 0.001) -> Tuple[np.ndarray, np.ndarray]:
+    """Method to region normalize a spectrum by total ion count.
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
         array of spectrum and second element is the intensity values array
         of spectrum.
+        regions (List[Tuple[int, int]]): list of regions to apply normalization
+        to. Each element should have a region start value and end value. 
+        assumptions is there is no intersection between regions.
+        epsilon (float): small float added to denominator  to avoid dividing
+        by zero.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: first element is mz values array of
@@ -120,12 +131,8 @@ class TICNormalizer(SpectrumNormalizer):
     for region in regions:
       # get only region mzs indexes
       idx = (mzs >= region[0] & mzs < region[1])
-      # get region TIC
-      tic = intensities[idx].sum()
-      # if TIC is zero no need to divide by TIC
-      # all elements are o
-      if tic != 0:
-        intensities[idx] = intensities[idx] / tic
+      # apply tic normalization
+      intensities[idx] = (intensities[idx] / (intensities[idx].sum() + epsilon))
     return (mzs, intensities)
 
 
@@ -135,15 +142,17 @@ class MedianNormalizer(SpectrumNormalizer):
   """
 
   @classmethod
-  def normalize(
-      cls, spectrum: Tuple[np.ndarray,
-                           np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+  def normalize(cls,
+                spectrum: Tuple[np.ndarray, np.ndarray],
+                epsilon: float = 0.001) -> Tuple[np.ndarray, np.ndarray]:
     """Method to normalize a spectrum by median.
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
         array of spectrum and second element is the intensity values array
         of spectrum.
+        epsilon (float): small float added to denominator  to avoid dividing
+        by zero.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: first element is mz values array of
@@ -151,18 +160,27 @@ class MedianNormalizer(SpectrumNormalizer):
         of spectrum.
 
     """
-    pass
+    # unpack spectrum
+    mzs, intensities = np.copy(spectrum)
+    # return median normalized
+    return (mzs, intensities / (np.median(intensities) + epsilon))
 
   @classmethod
-  def region_normalize(
-      cls, spectrum: Tuple[np.ndarray, np.ndarray],
-      regions: List[Tuple[int, int]]) -> Tuple[np.ndarray, np.ndarray]:
+  def region_normalize(cls,
+                       spectrum: Tuple[np.ndarray, np.ndarray],
+                       regions: List[Tuple[int, int]],
+                       epsilon: float = 0.001) -> Tuple[np.ndarray, np.ndarray]:
     """Method to region normalize a spectrum by median.
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
         array of spectrum and second element is the intensity values array
         of spectrum.
+        regions (List[Tuple[int, int]]): list of regions to apply normalization
+        to. Each element should have a region start value and end value. 
+        assumptions is there is no intersection between regions.
+        epsilon (float): small float added to denominator  to avoid dividing
+        by zero.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: first element is mz values array of
@@ -170,24 +188,35 @@ class MedianNormalizer(SpectrumNormalizer):
         of spectrum.
 
     """
-    pass
+    # unpack spectrum
+    mzs, intensities = np.copy(spectrum)
+    # loop over each region to apply TIC normalization for that region
+    for region in regions:
+      # get only region mzs indexes
+      idx = (mzs >= region[0] & mzs < region[1])
+      # apply median normalization
+      intensities[idx] = (intensities[idx] /
+                          (np.median(intensities[idx]) + epsilon))
+    return (mzs, intensities)
 
 
 class MeanNormalizer(SpectrumNormalizer):
-  """Q3 normalizer.
+  """Mean normalizer.
 
   """
 
   @classmethod
-  def normalize(
-      cls, spectrum: Tuple[np.ndarray,
-                           np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+  def normalize(cls,
+                spectrum: Tuple[np.ndarray, np.ndarray],
+                epsilon: float = 0.001) -> Tuple[np.ndarray, np.ndarray]:
     """Method to normalize a spectrum by mean.
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
         array of spectrum and second element is the intensity values array
         of spectrum.
+        epsilon (float): small float added to denominator  to avoid dividing
+        by zero.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: first element is mz values array of
@@ -195,18 +224,27 @@ class MeanNormalizer(SpectrumNormalizer):
         of spectrum.
 
     """
-    pass
+    # unpack spectrum
+    mzs, intensities = np.copy(spectrum)
+    # return mean normalized
+    return (mzs, intensities / (np.mean(intensities) + epsilon))
 
   @classmethod
-  def region_normalize(
-      cls, spectrum: Tuple[np.ndarray, np.ndarray],
-      regions: List[Tuple[int, int]]) -> Tuple[np.ndarray, np.ndarray]:
+  def region_normalize(cls,
+                       spectrum: Tuple[np.ndarray, np.ndarray],
+                       regions: List[Tuple[int, int]],
+                       epsilon: float = 0.001) -> Tuple[np.ndarray, np.ndarray]:
     """Method to region normalize a spectrum by mean.
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
         array of spectrum and second element is the intensity values array
         of spectrum.
+        regions (List[Tuple[int, int]]): list of regions to apply normalization
+        to. Each element should have a region start value and end value. 
+        assumptions is there is no intersection between regions.
+        epsilon (float): small float added to denominator  to avoid dividing
+        by zero.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: first element is mz values array of
@@ -214,7 +252,16 @@ class MeanNormalizer(SpectrumNormalizer):
         of spectrum.
 
     """
-    pass
+    # unpack spectrum
+    mzs, intensities = np.copy(spectrum)
+    # loop over each region to apply TIC normalization for that region
+    for region in regions:
+      # get only region mzs indexes
+      idx = (mzs >= region[0] & mzs < region[1])
+      # apply mean normalization
+      intensities[idx] = (intensities[idx] /
+                          (np.mean(intensities[idx]) + epsilon))
+    return (mzs, intensities)
 
 
 class Q3Normalizer(SpectrumNormalizer):
@@ -223,15 +270,17 @@ class Q3Normalizer(SpectrumNormalizer):
   """
 
   @classmethod
-  def normalize(
-      cls, spectrum: Tuple[np.ndarray,
-                           np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+  def normalize(cls,
+                spectrum: Tuple[np.ndarray, np.ndarray],
+                epsilon: float = 0.001) -> Tuple[np.ndarray, np.ndarray]:
     """Method to normalize a spectrum by Q3.
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
         array of spectrum and second element is the intensity values array
         of spectrum.
+        epsilon (float): small float added to denominator  to avoid dividing
+        by zero.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: first element is mz values array of
@@ -239,18 +288,27 @@ class Q3Normalizer(SpectrumNormalizer):
         of spectrum.
 
     """
-    pass
+    # unpack spectrum
+    mzs, intensities = np.copy(spectrum)
+    # return mean normalized
+    return (mzs, intensities / (np.quantile(intensities, 0.75) + epsilon))
 
   @classmethod
-  def region_normalize(
-      cls, spectrum: Tuple[np.ndarray, np.ndarray],
-      regions: List[Tuple[int, int]]) -> Tuple[np.ndarray, np.ndarray]:
+  def region_normalize(cls,
+                       spectrum: Tuple[np.ndarray, np.ndarray],
+                       regions: List[Tuple[int, int]],
+                       epsilon: float = 0.001) -> Tuple[np.ndarray, np.ndarray]:
     """Method to region normalize a spectrum by Q3.
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
         array of spectrum and second element is the intensity values array
         of spectrum.
+        regions (List[Tuple[int, int]]): list of regions to apply normalization
+        to. Each element should have a region start value and end value. 
+        assumptions is there is no intersection between regions.
+        epsilon (float): small float added to denominator  to avoid dividing
+        by zero.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: first element is mz values array of
@@ -258,12 +316,21 @@ class Q3Normalizer(SpectrumNormalizer):
         of spectrum.
 
     """
-    pass
+    # unpack spectrum
+    mzs, intensities = np.copy(spectrum)
+    # loop over each region to apply TIC normalization for that region
+    for region in regions:
+      # get only region mzs indexes
+      idx = (mzs >= region[0] & mzs < region[1])
+      # apply mean normalization
+      intensities[idx] = (intensities[idx] /
+                          (np.quantile(intensities[idx], 0.75) + epsilon))
+    return (mzs, intensities)
 
 
 class NormalizerFactory():
   """Normalizer Factory
-  
+
   """
 
   @classmethod
