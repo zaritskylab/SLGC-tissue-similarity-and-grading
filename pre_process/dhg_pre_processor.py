@@ -20,7 +20,7 @@ from pathlib import Path
 from tqdm import tqdm
 from pyimzml.ImzMLParser import ImzMLParser
 from pyimzml.ImzMLWriter import ImzMLWriter
-from normalization import TICNormalizer
+from normalization import NormalizerFactory
 from binning import MassResolutionBinning
 
 
@@ -34,6 +34,12 @@ def main() -> None:
                       required=True,
                       help="DESI Human Glioma dataset folder path")
   parser.add_argument("-o", required=True, help="Output folder")
+  parser.add_argument("-n",
+                      help="Normalization type",
+                      choices=["TIC", "Median", "Mean"])
+  parser.add_argument("-r",
+                      action="store_true",
+                      help="Apply region normalization")
   args = parser.parse_args()
 
   # create output folder if doesn't exist
@@ -46,25 +52,32 @@ def main() -> None:
   config.read(config_file)
 
   # apply preprocessing
-  pre_process_dhg(args.i, args.o, float(config["DHG"]["MZ_START"]),
+  pre_process_dhg(args.i, args.o, args.n, args.r,
+                  float(config["DHG"]["MZ_START"]),
                   float(config["DHG"]["MZ_END"]),
                   float(config["DHG"]["MASS_RESOLUTION"]))
 
 
-def pre_process_dhg(i_path: str, o_path: str, mz_start: float, mz_end: float,
+def pre_process_dhg(i_path: str, o_path: str, norm_type: str, region_norm: bool,
+                    mz_start: float, mz_end: float,
                     mass_resolution: float) -> None:
   """Function to preprocess all the images in the DESI Human Glioma dataset.
 
   Args:
       i_path (str): path to folder containing the imzML images.
       o_path (str): output path.
+      norm_type (str): type of normalization if None no normalization is
+      applied.
+      region_norm (bool): if true region normalization is applied.
       mz_start (float): mz spectrum range start.
       mz_end (float): mz spectrum range end.
       mass_resolution (float): mass spectrometry resolution.
 
   """
   # create normalizer
-  normalizer = TICNormalizer()
+  normalizer = None
+  if norm_type is not None:
+    normalizer = NormalizerFactory().get_normalizer(norm_type)
 
   # create binning object
   binning = MassResolutionBinning(mz_start, mz_end, mass_resolution)
@@ -85,9 +98,13 @@ def pre_process_dhg(i_path: str, o_path: str, mz_start: float, mz_end: float,
                                    desc="Pixels Loop"):
 
           # apply normalization and bining to spectrum
-          mzs, intensities = binning.bin(
-              normalizer.normalize(p.getspectrum(idx)))
-
+          mzs, intensities = p.getspectrum(idx)
+          if normalizer is not None:
+            if region_norm:
+              mzs, intensities = normalizer.region_normalize((mzs, intensities))
+            else:
+              mzs, intensities = normalizer.normalize((mzs, intensities))
+          mzs, intensities = binning.bin(mzs, intensities)
           # write processed spectrum
           writer.addSpectrum(mzs, intensities, (x, y, z))
 
