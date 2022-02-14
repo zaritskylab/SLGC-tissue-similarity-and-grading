@@ -104,7 +104,7 @@ def pre_process_dhg(i_path: str, o_path: str, norm_type: str, region_norm: bool,
               mzs, intensities = normalizer.region_normalize((mzs, intensities))
             else:
               mzs, intensities = normalizer.normalize((mzs, intensities))
-          mzs, intensities = binning.bin(mzs, intensities)
+          mzs, intensities = binning.bin((mzs, intensities))
           # write processed spectrum
           writer.addSpectrum(mzs, intensities, (x, y, z))
 
