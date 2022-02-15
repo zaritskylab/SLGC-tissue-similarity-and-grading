@@ -130,7 +130,7 @@ class TICNormalizer(SpectrumNormalizer):
     # loop over each region to apply TIC normalization for that region
     for region in regions:
       # get only region mzs indexes
-      idx = (mzs >= region[0] & mzs < region[1])
+      idx = ((mzs >= region[0]) & (mzs < region[1]))
       # apply tic normalization
       intensities[idx] = (intensities[idx] / (intensities[idx].sum() + epsilon))
     return (mzs, intensities)
@@ -193,7 +193,7 @@ class MedianNormalizer(SpectrumNormalizer):
     # loop over each region to apply TIC normalization for that region
     for region in regions:
       # get only region mzs indexes
-      idx = (mzs >= region[0] & mzs < region[1])
+      idx = ((mzs >= region[0]) & (mzs < region[1]))
       # apply median normalization
       intensities[idx] = (intensities[idx] /
                           (np.median(intensities[idx]) + epsilon))
@@ -257,7 +257,7 @@ class MeanNormalizer(SpectrumNormalizer):
     # loop over each region to apply TIC normalization for that region
     for region in regions:
       # get only region mzs indexes
-      idx = (mzs >= region[0] & mzs < region[1])
+      idx = ((mzs >= region[0]) & (mzs < region[1]))
       # apply mean normalization
       intensities[idx] = (intensities[idx] /
                           (np.mean(intensities[idx]) + epsilon))
@@ -321,7 +321,7 @@ class Q3Normalizer(SpectrumNormalizer):
     # loop over each region to apply TIC normalization for that region
     for region in regions:
       # get only region mzs indexes
-      idx = (mzs >= region[0] & mzs < region[1])
+      idx = ((mzs >= region[0]) & (mzs < region[1]))
       # apply mean normalization
       intensities[idx] = (intensities[idx] /
                           (np.quantile(intensities[idx], 0.75) + epsilon))
