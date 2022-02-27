@@ -118,7 +118,7 @@ def main() -> None:
         pc = plt.pcolormesh(im_l,
                             cmap="inferno",
                             vmin=im_l.min(),
-                            vmax=im_l.max())
+                            vmax=im_l.mean())
 
         # save plot
         plt.savefig(os.path.join(args.o, title + f"-{peak}" + ".png"),
@@ -128,7 +128,7 @@ def main() -> None:
 
         # add color bar
         _, ax = plt.subplots(frameon=False)
-        plt.colorbar(pc, ticks=np.linspace(im_l.min(), im_l.max(), 10), ax=ax)
+        plt.colorbar(pc, ticks=np.linspace(im_l.min(), im_l.mean(), 10), ax=ax)
 
         # remove peak plot
         ax.remove()
