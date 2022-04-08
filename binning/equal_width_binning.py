@@ -7,9 +7,9 @@ This module should be imported and contains the following:
 """
 
 import numpy as np
-import pandas as pd
+from scipy import stats
 from typing import Tuple
-from binning.binning_interface import BinningInterface
+from NanoBiopsy.binning.binning_interface import BinningInterface
 
 
 class EqualWidthBinning(BinningInterface):
@@ -18,24 +18,27 @@ class EqualWidthBinning(BinningInterface):
   """
 
   def __init__(self, mz_start: float, mz_end: float,
-               mass_resolution: float) -> None:
+               bin_width: float) -> None:
     """__init__ method.
 
     Args:
         mz_start (float): mz spectrum range start.
         mz_end (float): mz spectrum range end.
-        mass_resolution (float): mass spectrometry resolution.
+        bin_width (float): Binning bin width.
     """
     super().__init__()
 
-    # create spectrum bins using spectrum lowest and largest
-    # mz value and spectrum mass resolution
-    self.bins = np.around(np.arange(mz_start, mz_end, mass_resolution / 2), 5)
+    # Calculate number of bins
+    num_bins = int((mz_end - mz_start) / bin_width)
+    # create bin edges array of equal width bins from mz_start to mz_end with bin_width
+    self.bin_edges = np.around(np.linspace(mz_start, mz_end, num_bins), 5)
+    # create bin centers array of equal width bins from mz_start to mz_end with bin_width 
+    self.bin_centers = 0.5 * (self.bin_edges[1:] + self.bin_edges[:-1])
 
   def bin(
       self, spectrum: Tuple[np.ndarray,
                             np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
-    """Abstract Method to normalize a spectrum total ion count (TIC).
+    """Method to bin spectra
 
     Args:
         spectrum (Tuple[np.ndarray, np.ndarray]): first element is mz values
@@ -48,35 +51,10 @@ class EqualWidthBinning(BinningInterface):
         of spectrum.
 
     """
-
     # unpack spectrum
     mzs, intensities = spectrum
-
-    # create new empty intensities array
-    # corresponding to bins
-    new_intensities = np.zeros(self.bins.shape)
-
-    # assign each mz value to its corresponding bin index
-    mz_bin_index = np.digitize(mzs, self.bins, right=True)
-
-    # create dataframe with the following columns -
-    # mz value bin index, mz value, intensity
-    df = pd.DataFrame({
-        'mz_bin_index': np.asarray(mz_bin_index),
-        'mz': np.asarray(mzs),
-        'intensity': np.asarray(intensities)
-    })
-
-    # group by the bins index, get the intensity
-    # as sum of bin intensities
-    df_group = df.groupby(by='mz_bin_index').agg({
-        'mz_bin_index': 'first',
-        'intensity': 'sum'
-    })
-
-    # for all bins indexes that are in the mz_bin_index
-    # assign the corresponding intensity value
-    # leaving all other bins zero
-    new_intensities[df_group['mz_bin_index']] = df_group['intensity']
-
-    return (self.bins.copy(), new_intensities)
+    
+    # bin data
+    bin_sums, _, _ = stats.binned_statistic(x=mzs, values=intensities, statistic=sum, bins=self.bin_edges)
+    
+    return self.bin_centers, bin_sums

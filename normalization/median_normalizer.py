@@ -8,7 +8,7 @@ This module should be imported and contains the following:
 
 import numpy as np
 from typing import Tuple
-from normalization.normalizer_interface import NormalizerInterface
+from NanoBiopsy.normalization.normalizer_interface import NormalizerInterface
 
 
 class MedianNormalizer(NormalizerInterface):

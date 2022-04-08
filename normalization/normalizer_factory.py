@@ -6,9 +6,9 @@ This module should be imported and contains the following:
 
 """
 
-from normalization.normalizer_interface import NormalizerInterface
-from normalization.tic_normalizer import TICNormalizer
-from normalization.median_normalizer import MedianNormalizer
+from NanoBiopsy.normalization.normalizer_interface import NormalizerInterface
+from NanoBiopsy.normalization.tic_normalizer import TICNormalizer
+from NanoBiopsy.normalization.median_normalizer import MedianNormalizer
 
 
 class NormalizerFactory():
