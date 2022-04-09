@@ -1,3 +1,7 @@
+import sys
+
+sys.path.insert(0, "/sise/assafzar-group/assafzar/Leor/NanoBiopsy")
+
 from os import listdir
 from os.path import join
 from pathlib import Path
