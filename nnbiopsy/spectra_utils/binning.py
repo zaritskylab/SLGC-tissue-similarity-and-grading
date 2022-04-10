@@ -78,17 +78,25 @@ class EqualWidthBinning(BinningInterface):
         of spectra.
 
     """
-    # unpack spectra
+    # Unpack spectra
     mzs, intensities = np.copy(spectra)
 
-    # if no mz values
+    # If no mz values
     if np.array_equal(mzs, []):
       return self.bin_centers, np.zeros(self.bin_centers.shape)
 
-    # bin data
-    bin_sums, _, _ = stats.binned_statistic(x=mzs,
-                                            values=intensities,
-                                            statistic=sum,
-                                            bins=self.bin_edges)
+    # Assign each mz value to its corresponding bin index
+    bin_index = np.digitize(mzs, self.bin_edges)
+
+    # Assign values beyond the bounds of bins to first and last bin
+    # if they are smaller\larger than bounds respectively
+    bin_index[bin_index == 0] = 1
+    bin_index[bin_index == len(self.bin_edges)] = len(self.bin_edges) - 1
+
+    # 0 index
+    bin_index -= 1
+
+    # Sum value of each bins
+    bin_sums = np.bincount(bin_index, weights=intensities)
 
     return self.bin_centers, bin_sums
