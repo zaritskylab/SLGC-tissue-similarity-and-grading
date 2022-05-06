@@ -1,0 +1,22 @@
+name: tfgpu_jup
+dependencies:
+  - python = 3.9
+  - cudatoolkit
+  - cudnn
+  - tensorflow-gpu
+  - scikit-learn
+  - scikit-image
+  - numpy
+  - pandas
+  - seaborn
+  - matplotlib
+  - tqdm
+  - pip
+  - pip:
+    - pyimzml
+  - jupyterlab
+  - ipykernel
+  - ipywidgets
+  - jupyter-resource-usage
+  - nodejs
+  - widgetsnbextension
