@@ -1,4 +1,4 @@
-"""Batch Normalization Variational Autoencoder
+"""Batch Normalization Variational AutoEncoder
 
 This module should be imported and contains the following:
 
@@ -10,9 +10,8 @@ This module should be imported and contains the following:
 """
 
 import tensorflow as tf
-from tensorflow import keras
+from tensorflow.keras import Model
 from tensorflow.keras import layers
-from tensorflow.keras import backend as K
 
 
 class Sampling(layers.Layer):
@@ -34,8 +33,12 @@ class Sampling(layers.Layer):
     """
     # Unpack z_mean, z_log_var
     z_mean, z_log_var = inputs
+    # Get batch size
+    batch = tf.shape(z_mean)[0]
+    # Get layer dimensions
+    dim = tf.shape(z_mean)[1]
     # Sample noise from normal distribution
-    epsilon = K.random_normal(shape=tf.shape(z_mean))
+    epsilon = tf.random.normal(shape=(batch, dim))
     # return re-parameterization
     return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
@@ -56,21 +59,16 @@ class Encoder(layers.Layer):
         latent_dim (int): Encoder latent dimension size.
         intermediate_dim (int): Encoder intermediate dimension size.
         name (str, optional): Encoder name. Defaults to "encoder".
-    
+
     """
-    # Super class initialization
     super(Encoder, self).__init__(name=name, **kwargs)
-    # Define intermidiate dense layer
     self.dense_proj = layers.Dense(intermediate_dim)
-    # Define intermidiate batch normalization layer
-    self.dense_batch_norm = layers.BatchNormalization()
-    # Define intermidiate relu layer
-    self.dense_relu = layers.ReLU()
-    # Define mean dense layer
+    self.batch_norm_proj = layers.BatchNormalization()
+    self.relu_proj = layers.ReLU()
     self.dense_mean = layers.Dense(latent_dim)
-    # Define variance dense layer
+    self.batch_norm_mean = layers.BatchNormalization()
     self.dense_log_var = layers.Dense(latent_dim)
-    # Define sampleing layer
+    self.batch_norm_log_var = layers.BatchNormalization()
     self.sampling = Sampling()
 
   def call(self, inputs: tf.Tensor) -> tf.Tensor:
@@ -84,25 +82,21 @@ class Encoder(layers.Layer):
         tf.Tensor: Model outputs.
 
     """
-    # Apply intermidiate dense layer on inputs
-    x = self.dense_proj(inputs)
-    # Apply intermidiate batch normalization layer on
-    # intermidiate dense layer outputs
-    x = self.dense_batch_norm(x)
-    # Apply intermidiate relu layer on intermidiate
-    # batch normalization layer outputs
-    x = self.dense_relu(x)
-    # Apply mean dense layer on intermidiate
-    # relu layer outputs
-    z_mean = self.dense_mean(x)
-    # Apply variance dense layer on intermidiate
-    # relu layer outputs
-    z_log_var = self.dense_log_var(x)
-    # Apply sampling layer on latent mean
-    # dense layer outputs and latent
-    # variance dense layer outputs
+    # Intermediate layer
+    h = self.dense_proj(inputs)
+    h = self.batch_norm_proj(h)
+    h = self.relu_proj(h)
+
+    # Mean layer
+    z_mean = self.dense_mean(h)
+    z_mean = self.batch_norm_mean(z_mean)
+
+    # Log var layer
+    z_log_var = self.dense_log_var(h)
+    z_log_var = self.batch_norm_log_var(z_log_var)
+
+    # Sampling layer
     z = self.sampling((z_mean, z_log_var))
-    # Return z_mean, z_log_var, z
     return z_mean, z_log_var, z
 
 
@@ -122,13 +116,12 @@ class Decoder(layers.Layer):
         original_dim (int): Decoder original dimension size.
         intermediate_dim (int): Decoder intermediate dimension size.
         name (str, optional): Decoder name. Defaults to "decoder".
-    
+
     """
-    # Super class initialization
     super(Decoder, self).__init__(name=name, **kwargs)
-    # Define intermidiate dense layer
     self.dense_proj = layers.Dense(intermediate_dim)
-    # Define reconstruction dense layer
+    self.batch_norm_proj = layers.BatchNormalization()
+    self.relu_proj = layers.ReLU()
     self.dense_output = layers.Dense(original_dim, activation="sigmoid")
 
   def call(self, inputs: tf.Tensor) -> tf.Tensor:
@@ -142,13 +135,17 @@ class Decoder(layers.Layer):
         tf.Tensor: Model outputs.
 
     """
-    # Apply intermidiate dense layer on inputs
-    x = self.dense_proj(inputs)
-    # Return reconstruction dense layer of intermidiate layer outputs
-    return self.dense_output(x)
+    # Intermediate layer
+    h = self.dense_proj(inputs)
+    h = self.batch_norm_proj(h)
+    h = self.relu_proj(h)
+
+    # Reconstruction layer
+    outputs = self.dense_output(h)
+    return outputs
 
 
-class BNVAE(keras.Model):
+class BNVAE(Model):
   """Batch Normalization VAE class.
 
   """
@@ -167,14 +164,9 @@ class BNVAE(keras.Model):
         latent_dim (int): AutoEncoder latent dimension size.
         name (str, optional): AutoEncoder name. Defaults to "autoencoder".
     """
-    # Super class initialization
     super(BNVAE, self).__init__(name=name, **kwargs)
-    # Save original dimension size
-    self.original_dim = original_dim
-    # Define encoder
     self.encoder = Encoder(latent_dim=latent_dim,
                            intermediate_dim=intermediate_dim)
-    # Define decoder
     self.decoder = Decoder(original_dim, intermediate_dim=intermediate_dim)
 
   def call(self, inputs: tf.Tensor) -> tf.Tensor:
@@ -190,12 +182,14 @@ class BNVAE(keras.Model):
     """
     # Unpack z_mean, z_log_var, z
     z_mean, z_log_var, z = self.encoder(inputs)
+
     # Get decoder reconstruction
     reconstructed = self.decoder(z)
-    # Define KL divergence regularization loss
+
+    # Add KL divergence regularization loss
     kl_loss = -0.5 * tf.reduce_mean(z_log_var - tf.square(z_mean) -
                                     tf.exp(z_log_var) + 1)
-    # Add KL divergence regularization loss
     self.add_loss(kl_loss)
-    # Return decoder reconstructed output
+
+    # Return decoder reconstructed output for reconstruction loss
     return reconstructed
