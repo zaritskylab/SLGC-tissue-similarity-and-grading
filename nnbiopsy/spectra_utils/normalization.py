@@ -68,7 +68,7 @@ class MedianNormalizer(NormalizerInterface):
     # unpack spectra
     mzs, intensities = np.copy(spectra)
     # return median normalized
-    return (mzs, intensities / (np.median(intensities) + epsilon))
+    return (mzs, intensities / (np.median(np.nonzero(intensities)) + epsilon))
 
 
 class TICNormalizer(NormalizerInterface):
