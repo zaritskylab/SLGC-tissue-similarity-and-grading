@@ -133,10 +133,10 @@ dmypy.json
 *.ibh
 *.imzml
 
-# vs code
-.vscode
-
 # data and results folders
-DHG/
+DHG/level_0/
+DHG/level_1/
+DHG/level_2/
+DHG/whole_slide_annotations/
 figures/
 models/

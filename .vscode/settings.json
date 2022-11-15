@@ -1,0 +1,16 @@
+{
+  "python.linting.enabled": false,
+  "python.linting.pylintPath": "pylint",
+  "editor.formatOnSave": true,
+  "python.formatting.provider": "yapf",
+  "python.linting.pylintEnabled": true,
+  "python.formatting.yapfArgs": [
+    "--style={based_on_style: google, column_limit: 80, indent_width: 2, SPLIT_BEFORE_NAMED_ASSIGNS: False, DEDENT_CLOSING_BRACKETS: True. SPLIT_BEFORE_FIRST_ARGUMENT:False}"
+  ],
+  "editor.rulers": [
+    80
+  ],
+  "cSpell.words": [
+    "matplotlib"
+  ]
+}
