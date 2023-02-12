@@ -7,13 +7,14 @@ import pandas as pd
 import seaborn as sns
 from pathlib import Path
 from processing import process
+from correlation import correlation_analysis
 
 # Define figure defaults
 sns.set_style("white")
 sns.set_context("paper")
 
 # Define folder that contains the dhg dataset
-DHG_PATH = "./DHG/"
+DHG_PATH = "../DHG/"
 # Define folder that contains raw data
 DHG_RAW_DATA = f"{DHG_PATH}/raw"
 # Define folder to save processed data
@@ -42,9 +43,12 @@ if __name__ == '__main__':
     # Create output folder if doesn't exist
     Path(output_path).mkdir(parents=True, exist_ok=True)
     # Process msi
+    """
     process(
         msi_path, output_path, roi.x_min, roi.x_max, roi.y_min, roi.y_max,
         MZ_START, MZ_END, MASS_RESOLUTION, REPRESENTATIVE_PEAKS
     )
+    """
+  correlation_analysis(DHG_PROCESSED_DATA)
   """ Correlation analysis"""
   """ Classification analysis"""
