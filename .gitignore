@@ -134,9 +134,6 @@ dmypy.json
 *.imzml
 
 # data and results folders
-DHG/level_0/
-DHG/level_1/
-DHG/level_2/
+DHG/raw/
+DHG/processed/
 DHG/whole_slide_annotations/
-figures/
-models/

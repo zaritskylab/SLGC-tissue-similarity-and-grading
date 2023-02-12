@@ -1,0 +1,173 @@
+"""Mass spectrometry processing
+This module should be imported and contains the following:
+    
+    * process_spectras - Function to process msi.
+    * read_msi - Function to read a continuos msi.
+    * common_representation - Function to to create common representation for
+            msi spectras.
+    * meaningful_signal - Function to create meaningful signal for msi spectras.
+
+"""
+
+import os
+import numpy as np
+from typing import List, Tuple
+from pyimzml.ImzMLParser import ImzMLParser
+from pyimzml.ImzMLWriter import ImzMLWriter
+from processing import (
+    EqualWidthBinning, TICNormalizer, MeanSegmentation, ZScoreCorrection
+)
+
+
+def read_msi(p: ImzMLParser) -> Tuple[np.ndarray, np.ndarray]:
+  """
+    Function to read a continuos imzML parser object into a numpy array.
+
+    Args:
+        p (ImzMLParser): The imzML parser.
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: Numpy 3D matrix where y coordinate
+            (axis=0), x coordinate (axis=1), intensities values (axis=2)
+            and continuos mzs values.
+
+    """
+  # Get shape of mzs values
+  max_z = p.mzLengths[0]
+  # Get shape of y axis
+  max_y = p.imzmldict["max count of pixels y"]
+  # Get shape of x axis
+  max_x = p.imzmldict["max count of pixels x"]
+  # Create empty numpy 3D matrix
+  msi = np.zeros((max_y, max_x, max_z))
+  # Loop over each coordinate and add to 3D matrix
+  for i, (x, y, _) in enumerate(p.coordinates):
+    # Get mzs and intensities
+    mzs, ints = p.getspectrum(i)
+    # Add intensities to x,y coordinate
+    msi[y - 1, x - 1, :] = ints
+  return mzs, msi
+
+
+def common_representation(
+    input_path: str, output_path: str, x_min: int, x_max: int, y_min: int,
+    y_max: int, mz_start: int, mz_end: int, mass_resolution: float
+) -> None:
+  """Function to create common representation for msi spectras. Function 
+        creates a new msi file in the given folder.
+
+  Args:
+      input_path (str): Path to imzML file that needs to be processed.
+      output_path (str): Path to folder for saving output.
+      x_min (int): X minimum coordinate of the the tissue in the input.
+      x_max (int): X maximum coordinate of the the tissue in the input.
+      y_min (int): Y minimum coordinate of the the tissue in the input.
+      y_max (int): Y maximum coordinate of the the tissue in the input.
+      mz_start (int): The start value of the mz range.
+      mz_end (int): The end value of the mz range.
+      mass_resolution (float): The mass resolution.
+
+  """
+  # Get normalizer object
+  normalizer = TICNormalizer()
+  # Get binning object
+  binning = EqualWidthBinning(mz_start, mz_end, mass_resolution)
+  # Create process pipe
+  process_pipe = (
+      lambda mzs, intensities:
+      (binning.bin(normalizer.normalize((mzs, intensities))))
+  )
+  # Parse the MSI file containing ROI
+  with ImzMLParser(input_path) as reader:
+    # Create a new MSI for ROI. because we apply binning
+    # we can use mode="continuous"
+    with ImzMLWriter(
+        os.path.join(output_path, "common_representation.imzML"),
+        mode="continuous"
+    ) as writer:
+      # Loop over each spectra in MSI
+      for idx, (x, y, z) in enumerate(reader.coordinates):
+        # Check if spectra is in ROI boundaries
+        if ((x_min <= x - 1 <= x_max) & (y_min <= y - 1 <= y_max)):
+          # Read spectra from MSI
+          raw_mzs, raw_intensities = reader.getspectrum(idx)
+          # Apply processing pipe
+          preprocessed_mzs, preprocessed_intensities = process_pipe(
+              raw_mzs, raw_intensities
+          )
+          # Write spectra to new MSI with relative coordinate
+          writer.addSpectrum(
+              preprocessed_mzs, preprocessed_intensities,
+              (x - x_min + 1, y - y_min + 1, z)
+          )
+
+
+def meaningful_signal(
+    input_path: str, output_path: str, representative_peaks: List[float],
+    mass_resolution: float
+):
+  """Function to create meaningful signal for msi spectras. Function 
+      creates a new msi file in the given folder and a segmentation file.
+
+  Args:
+      input_path (str): Path to continuos imzML file that needs to be
+              processed.
+      output_path (str): Path to folder for saving output.
+      representative_peaks (List[float]): Representative peaks (mz values) 
+          for getting a single channel image.
+      mass_resolution (float): Mass resolution of the msi.
+
+  """
+  # Parse the msi file
+  with ImzMLParser(input_path) as reader:
+    # Get full msi
+    mzs, img = read_msi(reader)
+    # Segment image
+    segment_img = MeanSegmentation(mzs, representative_peaks,
+                                   mass_resolution).segment(img)
+    # Save segmentation
+    np.save(os.path.join(output_path, 'segmentation.npy'), segment_img)
+
+    # Apply image correction
+    zscore_img = ZScoreCorrection().correct(img, segment_img)
+
+    # Open writer
+    with ImzMLWriter(
+        os.path.join(output_path, "meaningful_signal.imzML"), mode="continuous"
+    ) as writer:
+      # Save zscore image
+      for i, (x, y, z) in enumerate(reader.coordinates):
+        writer.addSpectrum(mzs, zscore_img[y - 1, x - 1], (x, y, z))
+
+
+def process(
+    input_path: str, output_path: str, x_min: int, x_max: int, y_min: int,
+    y_max: int, mz_start: int, mz_end: int, mass_resolution: float,
+    representative_peaks: List[float]
+) -> None:
+  """Function to process msi.
+
+  Args:
+      input_path (str): Path to imzML file that needs to be processed.
+      output_path (str): Path to folder for saving output.
+      x_min (int): X minimum coordinate of the the tissue in the input.
+      x_max (int): X maximum coordinate of the the tissue in the input.
+      y_min (int): Y minimum coordinate of the the tissue in the input.
+      y_max (int): Y maximum coordinate of the the tissue in the input.
+      mz_start (int): The start value of the mz range.
+      mz_end (int): The end value of the mz range.
+      mass_resolution (float): The mass resolution.
+      representative_peaks (List[float]): Representative peaks (mz values) 
+          for getting a single channel image.
+
+  """
+  # Create common representation
+  common_representation(
+      input_path, output_path, x_min, x_max, y_min, y_max, mz_start, mz_end,
+      mass_resolution / 2
+  )
+
+  # Create meaningful signal
+  meaningful_signal(
+      os.path.join(output_path, "common_representation.imzML"), output_path,
+      representative_peaks, mass_resolution
+  )
