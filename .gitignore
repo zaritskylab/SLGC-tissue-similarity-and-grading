@@ -137,3 +137,4 @@ dmypy.json
 DHG/raw/
 DHG/processed/
 DHG/whole_slide_annotations/
+/figures
