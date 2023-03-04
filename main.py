@@ -5,16 +5,12 @@ import os
 import random
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import tensorflow as tf
 from pathlib import Path
 from processing import process
 from correlation import correlation_analysis
 from classification import classification_analysis
 
-# Define figure defaults
-sns.set_style("white")
-sns.set_context("paper")
 # Define current folder using this file
 CWD = os.path.dirname(os.path.abspath(__file__))
 # Define folder that contains the dhg dataset

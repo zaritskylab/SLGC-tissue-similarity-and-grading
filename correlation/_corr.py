@@ -15,6 +15,7 @@ import pandas as pd
 from typing import List, Dict
 from scipy import stats
 from pyimzml.ImzMLParser import ImzMLParser
+from processing import ZScoreCorrection
 from utils import read_msi
 
 
@@ -98,10 +99,16 @@ def _get_representative_spectras(
       for name in representatives.keys():
         # Parse the msi file
         with ImzMLParser(
-            os.path.join(processed_path, folder, f"{name}.imzML")
+            os.path.join(
+                processed_path, folder, f"common_representation.imzML"
+            )
         ) as reader:
           # Get full msi
-          mzs, img = read_msi(reader)
+          _, img = read_msi(reader)
+          # Image correction faster than reading the meaningful_signal file
+          if name == "meaningful_signal":
+            img = ZScoreCorrection().correct(img, segment_image)
+
           # Get tissue spectra's mean
           representatives[name]["tissue"][folder] = img[segment_image, :].mean(
               axis=0

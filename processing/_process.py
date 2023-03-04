@@ -4,13 +4,14 @@ This module should be imported and contains the following:
     * process_spectras - Function to process msi.
     * common_representation - Function to to create common representation for
             msi spectras.
-    * meaningful_signal - Function to create meaningful signal for msi spectras.
+    * meaningful_signal - Function to create meaningful signal scaler for msi
+            spectras.
 
 """
 
 import os
 import numpy as np
-from typing import List, Tuple
+from typing import List
 from pyimzml.ImzMLParser import ImzMLParser
 from pyimzml.ImzMLWriter import ImzMLWriter
 from processing import (
@@ -58,7 +59,7 @@ def common_representation(
       # Loop over each spectra in MSI
       for idx, (x, y, z) in enumerate(reader.coordinates):
         # Check if spectra is in ROI boundaries
-        if ((x_min <= x - 1 <= x_max) & (y_min <= y - 1 <= y_max)):
+        if ((x_min <= x <= x_max) & (y_min <= y <= y_max)):
           # Read spectra from MSI
           raw_mzs, raw_intensities = reader.getspectrum(idx)
           # Apply processing pipe
@@ -78,7 +79,6 @@ def meaningful_signal(
 ):
   """Function to create meaningful signal for msi spectras. Function 
       creates a new msi file in the given folder and a segmentation file.
-
   Args:
       input_path (str): Path to continuos imzML file that needs to be
               processed.
@@ -86,7 +86,6 @@ def meaningful_signal(
       representative_peaks (List[float]): Representative peaks (mz values) 
           for getting a single channel image.
       mass_resolution (float): Mass resolution of the msi.
-
   """
   # Parse the msi file
   with ImzMLParser(input_path) as reader:
@@ -106,7 +105,7 @@ def meaningful_signal(
         os.path.join(output_path, "meaningful_signal.imzML"), mode="continuous"
     ) as writer:
       # Save zscore image
-      for i, (x, y, z) in enumerate(reader.coordinates):
+      for _, (x, y, z) in enumerate(reader.coordinates):
         writer.addSpectrum(mzs, zscore_img[y - 1, x - 1], (x, y, z))
 
 
