@@ -52,7 +52,7 @@ This code requires the DESI-MS Human Glioma dataset (details in the paper). You 
 If you use this code, please cite: 
 
 ```
-Paper MLA
+Martella, D. A., Rose, L. A., Rouatbi, N., Gu, C., Caprettini, V., Jensen, M., ... & Chiappini, C. (2023). Nondestructive Spatial Lipidomics for Glioma Classification. bioRxiv, 2023-03.
 ```
 
 Please contact leor.rose@gmail.com or assafzar@gmail.com for bugs or questions.
