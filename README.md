@@ -14,7 +14,7 @@ Davide Alessandro Martella<sup>1</sup>, Leor Ariel Rose<sup>2</sup>, Nadia Rouat
 ## Repository contents
 This repository contains code for the tissue similarity and grading of DESI human glioma nanobiopsy part of the paper "Nondestructive Spatial Lipidomics for Glioma Classification".
 
-[Main Python file](./main.py) - contains the main code to run the processing, correlation and classification analysis.
+[Main Python file](./main.py) - contains the main code to run the processing, correlation and classification analysis for the DESI human glioma nanobiopsy.
 
 [Processing folder](./processing) - contains the processing code.
 
@@ -24,18 +24,71 @@ This repository contains code for the tissue similarity and grading of DESI huma
 
 [Figure creation file](./visualization.ipynb) - contains the figure creation code.
 
+[Figure creation file](./esi_data_analysis.py) - contains the code for ESI data analysis and figure creation.
+
+[Figure creation file](./liver_data_analysis.py) - contains the code for DESI Liver data analysis and figure creation.
+
+[Figure creation file](./chip_typesdata_analysis.py) - contains the code for DESI chip types data analysis and figure creation.
+
 ## Prerequisite
-This code requires the DESI-MS Human Glioma dataset (details in the paper). You should acquire the data and create a folder containing the raw MSI files and the meta data CSV file. Folder structure should be as follows:
+Before running th coes you should acquire the data (details in th paper). Main code code requires the DESI-MS Human Glioma dataset, folder structures should be as follows:
 
       .
-      ├── DHG
-      │   ├── raw
-      │   │   ├── HG 1-r.ibd
-      │   │   ├── HG 1-r.ibh
-      │   │   ├── HG 1-r.imzML
-      │   │   ├── HG 1-s.ibd
-      │   │   ├── HG 1-s.imzML
-      │   │   ├── ...
+      ├── data
+      │   ├── DHG
+      │   │   └── raw
+      │   │       ├── HG 1-r.ibd
+      │   │       ├── HG 1-r.ibh
+      │   │       ├── HG 1-r.imzML
+      │   │       ├── HG 1-s.ibd
+      │   │       ├── HG 1-s.imzML
+      │   │       ├── ...
+      │   └── metadata.csv
+      └── SLGC-tissue-similarity-and-grading
+
+ESI data analysis and figure creation requires the ESI dataset, folder structures should be as follows:
+ 
+      .
+      ├── data
+      │   └── ESI
+      │       ├── 201303 BRAIN TISSUE 2_1.mzML
+      │       ├── 201303 BRAIN TISSUE 3-2.mzML
+      │       ├── 201303 NO SCRAPPING REPLICA 1.mzML
+      │       ├── 201303 NO SCRAPPING REPLICA 2.mzML
+      │       └── 201303 NO SCRAPPING REPLICA 3.mzML
+      └── SLGC-tissue-similarity-and-grading
+
+DESI liver data analysis and figure creation requires the DESI Liver dataset, folder structures should be as follows:
+ 
+      .
+      ├── data
+      │   ├── LIVER
+      │   │   └── raw
+      │   │       ├── 220224-optimization-liver-optimised-1 Analyte 1_1.ibd
+      │   │       ├── 220224-optimization-liver-optimised-1 Analyte 1_1.imzml
+      │   │       ├── 220224-optimization-liver-standard-1 Analyte 1_1.ibd
+      │   │       └── 220224-optimization-liver-standard-1 Analyte 1_1.imzml
+      │   └── metadata.csv
+      └── SLGC-tissue-similarity-and-grading
+
+And lastly chip types data analysis and figure creation requires the DESI chip types dataset, folder structures should be as follows:
+ 
+      .
+      ├── data
+      │   ├── CHIP_TYPES
+      │   │   └── raw
+      │   │       ├── 20230606-4chips Analyte 1_1.ibd
+      │   │       ├── 20230606-4chips Analyte 1_1.imzml
+      │   │       ├── 20230607-4chips+-t2-3-s+pp Analyte 1_1.ibd
+      │   │       ├── 20230607-4chips+-t2-3-s+pp Analyte 1_1.imzml
+      │   │       ├── 20230709-4chips Analyte 1_1.ibd
+      │   │       ├── 20230709-4chips Analyte 1_1.imzml
+      │   │       ├── 20230709-4chips_s_tissue Analyte 1_1.ibd
+      │   │       ├── 20230709-4chips_s_tissue Analyte 1_1.imzml
+      │   │       ├── 20230727 4chips no freezer Analyte 1_1.ibd
+      │   │       ├── 20230727 4chips no freezer Analyte 1_1.imzml
+      │   │       ├── 20230727 4chips no freezer tissue Analyte 1_1.ibd
+      │   │       └── 20230727 4chips no freezer tissue Analyte 1_1.imzml
       │   └── metadata.csv
       └── SLGC-tissue-similarity-and-grading
 
@@ -47,6 +100,10 @@ This code requires the DESI-MS Human Glioma dataset (details in the paper). You 
 4. Activate the conda environment `conda activate tfgpu_jup`
 5. Run `python main.py`
 6. Run `visualization.ipynb` Jupyter notebook.
+7. Run `esi_data_analysis.py`
+8. Run `liver_data_analysis.py`
+9.Run `chip_types_data_analysis.py`
+
 
 ## Citation
 If you use this code, please cite: 
