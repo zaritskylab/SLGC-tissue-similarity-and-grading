@@ -1,3 +1,5 @@
+![NANOBIOPSY logo](./logo.png)
+
 # Nondestructive Spatial Lipidomics for Glioma Classification - Tissue Similarity and Grading
 Davide Alessandro Martella<sup>1</sup>, Leor Ariel Rose<sup>2</sup>, Nadia Rouatbi<sup>3</sup>, Chenlei Gu<sup>1</sup>, Valeria Caprettini<sup>1</sup>, Magnus Jensen<sup>1</sup>, Cathleen Hagemann<sup>1,4</sup>, Andrea Serio<sup>1,4</sup>, Khuloud Al-Jamal<sup>3</sup>, Mads Bergholt<sup>1</sup>, Paul Brennan<sup>5</sup>, Assaf Zaritsky<sup>2</sup>, Ciro Chiappini<sup>1,6</sup>
 
@@ -50,7 +52,7 @@ This code requires the DESI-MS Human Glioma dataset (details in the paper). You 
 If you use this code, please cite: 
 
 ```
-Paper MLA
+Martella, D. A., Rose, L. A., Rouatbi, N., Gu, C., Caprettini, V., Jensen, M., ... & Chiappini, C. (2023). Nondestructive Spatial Lipidomics for Glioma Classification. bioRxiv, 2023-03.
 ```
 
 Please contact leor.rose@gmail.com or assafzar@gmail.com for bugs or questions.
