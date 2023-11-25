@@ -305,7 +305,6 @@ def plot_num_features(
                                                   []) + [msi_features]
   # Get values for bar plot
   means = {key: np.mean(value) for key, value in num_features.items()}
-  print(means)
   sems = {key: sem(value) for key, value in num_features.items()}
   mean_values = list(means.values())[::-1]
   sem_values = list(sems.values())[::-1]
