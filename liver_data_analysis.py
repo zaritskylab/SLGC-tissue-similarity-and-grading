@@ -412,6 +412,8 @@ def main():
     )
   # Define path to save figures
   PLOT_PATH = Path(CWD / "liver/")
+  # Create dirs
+  PLOT_PATH.mkdir(parents=True, exist_ok=True)
   # Create dict of msi parsers and masks
   parsers = {}
   masks = {}
