@@ -182,7 +182,7 @@ def plot_spectras_corr(
   # correlation_matrix = correlation_matrix.drop("TISSUE 3-2", axis=0).drop(
   # "TISSUE 3-2", axis=1)
   # Create figure
-  fig, ax = plt.subplots(1, 1, figsize=(7, 7), tight_layout=True)
+  _, ax = plt.subplots(1, 1, figsize=(7, 7), tight_layout=True)
   # Plot correlation matrix
   ax = sns.heatmap(
       correlation_matrix, annot=True, cbar=False, cmap="YlGn", fmt=".2f",
@@ -231,7 +231,7 @@ def plot_spectras_best_fit(
   # Loop over all combinations
   for i, j in itertools.combinations(spectras.keys(), 2):
     # Create figure
-    fig, ax = plt.subplots(1, 1, figsize=(4, 4), tight_layout=True)
+    _, ax = plt.subplots(1, 1, figsize=(4, 4), tight_layout=True)
     # Plot identity diagonal
     min_axis = min([min(spectras[i][1]), min(spectras[j][1])])
     max_axis = max([max(spectras[i][1]), max(spectras[j][1])])
@@ -285,7 +285,7 @@ def main():
   # Define current folder using this file
   CWD = Path(os.path.dirname(os.path.abspath(__file__)))
   # Define path to data
-  ESI_PATH = Path(("D:/Thesis/chapter_one/data/ESI"))
+  ESI_PATH = Path(os.path.join(CWD, "..", "data", "ESI"))
   # Define mass range start value
   MZ_START = 50
   # Define mass range end value

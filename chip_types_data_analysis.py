@@ -37,7 +37,7 @@ def plot_msi_segmentation(
   max_rows = grouped.size().max()
   num_groups = len(grouped)
   # Creating a grid of subplots
-  fig, axs = plt.subplots(
+  _, axs = plt.subplots(
       max_rows, num_groups, figsize=(num_groups * 2, max_rows * 2)
   )
   # Ensuring axs is always a 2D array for consistency in indexing
@@ -116,7 +116,7 @@ def plot_spectras_corr(processed_path: str, output_path: str) -> None:
   # Create a new correlation matrix with the specified conditions
   filtered_corr_matrix = corr_matrix.loc[section_rows, replica_columns]
   # Generate the heatmap
-  fig, ax = plt.subplots(1, 1, figsize=(15, 5), tight_layout=True)
+  _, ax = plt.subplots(1, 1, figsize=(15, 5), tight_layout=True)
   # Plot correlation matrix
   ax = sns.heatmap(
       filtered_corr_matrix, annot=True, cbar=False, cmap="YlGn", fmt=".2f",
@@ -313,13 +313,8 @@ def plot_num_features(
   #
   num_features = num_features[num_features["Peak Percentage"] == percentage]
 
-  # Calculate the mean and SEM for each 'Type'
-  group_stats = num_features.groupby('Type')['Number of Features'].agg(
-      ['mean', 'sem']
-  ).reset_index()
-
   # Now we plot the bars for the mean and add error bars for the SEM.
-  fig, ax = plt.subplots(1, 1, figsize=(10, 12))
+  _, ax = plt.subplots(1, 1, figsize=(10, 12))
 
   # Create a bar plot using seaborn with custom error bars
   ax = sns.barplot(
@@ -403,12 +398,8 @@ def plot_area_ratio(masks: Dict[str, np.ndarray], save_path: Path):
         areas.append([mask_1_type, mask_1.sum() / mask_2.sum()])
   areas = pd.DataFrame(areas, columns=["Type", "Area Ratio"])
 
-  # Calculate the mean and SEM for each 'Type'
-  group_stats = areas.groupby('Type')['Area Ratio'].agg(['mean',
-                                                         'sem']).reset_index()
-
   # Now we plot the bars for the mean and add error bars for the SEM.
-  fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+  _, ax = plt.subplots(1, 1, figsize=(10, 10))
 
   # Create a bar plot using seaborn with custom error bars
   ax = sns.barplot(
@@ -476,13 +467,13 @@ def main():
   # Define current folder using this file
   CWD = Path(os.path.dirname(os.path.abspath(__file__)))
   # Define folder that contains the revision chip type dataset
-  REV_PATH = Path("D:/Thesis/chapter_one/data/CHIP_TYPES")
+  CHIP_TYPES_PATH = Path(os.path.join(CWD, "..", "data", "CHIP_TYPES"))
   # Define folder that contains raw data
-  REV_RAW_DATA = REV_PATH.joinpath("raw")
+  RAW_DATA = CHIP_TYPES_PATH.joinpath("raw")
   # Define folder to save processed data
-  REV_PROCESSED_DATA = REV_PATH.joinpath("processed")
+  PROCESSED_DATA = CHIP_TYPES_PATH.joinpath("processed")
   # Define file that contains dhg metadata
-  METADATA_PATH = REV_PATH.joinpath("metadata.csv")
+  METADATA_PATH = CHIP_TYPES_PATH.joinpath("metadata.csv")
   # Define mass range start value
   MZ_START = 50
   # Define mass range end value
@@ -503,11 +494,11 @@ def main():
       lambda s: s.split("_")[0]
   )
   # Loop over each ROI in data frame
-  for index, roi in metadata_df.iterrows():
+  for _, roi in metadata_df.iterrows():
     # Define path to msi imzML file
-    msi_path = os.path.join(REV_RAW_DATA, f"{roi.file_name}.imzML")
+    msi_path = os.path.join(RAW_DATA, f"{roi.file_name}.imzML")
     # Define path to new msi imzML file after processing
-    output_path = os.path.join(REV_PROCESSED_DATA, f"{roi.sample_file_name}")
+    output_path = os.path.join(PROCESSED_DATA, f"{roi.sample_file_name}")
     # Create output folder if doesn't exist
     Path(output_path).mkdir(parents=True, exist_ok=True)
     # Process msi
@@ -522,18 +513,13 @@ def main():
   # Create dict of msi parsers and masks
   parsers = {}
   masks = {}
-  for folder in REV_PROCESSED_DATA.iterdir():
+  for folder in PROCESSED_DATA.iterdir():
     name = folder.stem
     parsers[name] = ImzMLParser(folder.joinpath("meaningful_signal.imzML"))
     masks[name] = np.load(folder.joinpath("segmentation.npy"), mmap_mode='r')
-  # Create tic spectra representing each MSI
-  tic_spectras = {
-      name: np.sum(read_msi(p)[1][masks[name]], axis=0)
-      for name, p in parsers.items()
-  }
   # Plot figures
   plot_msi_segmentation(metadata_df, masks, PLOT_PATH)
-  plot_spectras_corr(REV_PROCESSED_DATA, PLOT_PATH)
+  plot_spectras_corr(PROCESSED_DATA, PLOT_PATH)
   num_features = num_features_df(parsers, masks, np.arange(0.05, 0.55, 0.05))
   plot_num_features_thresholds(num_features, PLOT_PATH)
   plot_num_features(num_features, 0.3, PLOT_PATH)

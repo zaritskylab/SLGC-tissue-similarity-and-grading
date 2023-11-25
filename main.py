@@ -14,7 +14,7 @@ from classification import classification_analysis
 # Define current folder using this file
 CWD = os.path.dirname(os.path.abspath(__file__))
 # Define folder that contains the dhg dataset
-DHG_PATH = os.path.join(CWD, "..", "DHG")
+DHG_PATH = os.path.join(CWD, "..", "data", "DHG")
 # Define folder that contains raw data
 DHG_RAW_DATA = os.path.join(DHG_PATH, "raw")
 # Define folder to save processed data

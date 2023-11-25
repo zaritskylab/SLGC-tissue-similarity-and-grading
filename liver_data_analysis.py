@@ -8,14 +8,13 @@ import os
 import random
 import numpy as np
 import pandas as pd
-from typing import Tuple, Dict
+from typing import Dict
 from pathlib import Path
 from matplotlib import pyplot as plt
 from scipy.signal import find_peaks
 from scipy.stats import sem, ttest_ind
 from pyimzml.ImzMLParser import ImzMLParser
 from processing import process
-from correlation import correlation_analysis
 from utils import read_msi
 
 
@@ -227,11 +226,11 @@ def plot_spatial_num_features(
   # List to store images for each group
   images = []
   # Group the metadata by file name and process each group
-  for group_name, group in metadata_df.groupby("file_name"):
+  for _, group in metadata_df.groupby("file_name"):
     # Initialize an empty image array
     img = np.zeros((group["y_max"].max(), group["x_max"].max() + 1))
     # Loop through each row in the group and update the image array
-    for index, row in group.iterrows():
+    for _, row in group.iterrows():
       img[:, row["x_min"]:row["x_max"] +
           1] = spatial_num_features[row.sample_file_name]
     # Append the processed image to the images list
@@ -314,7 +313,7 @@ def plot_num_features(
   std_points = num_features['220224-optimization-liver-standard-1 Analyte 1_1']
   opt_points = num_features['220224-optimization-liver-optimised-1 Analyte 1_1']
   # Get ttest p value
-  stat, pvalue = ttest_ind(std_points, opt_points)
+  _, pvalue = ttest_ind(std_points, opt_points)
   if pvalue < 0.0001:
     p_text = "* * * *"
   elif 0.0001 <= pvalue < 0.001:
@@ -328,8 +327,8 @@ def plot_num_features(
   # Define categories for the x-axis
   categories = ['Std', 'Opt']
   # Create the bar chart
-  fig, ax = plt.subplots(1, 1, figsize=(3, 6), tight_layout=True)
-  bars = ax.bar(
+  _, ax = plt.subplots(1, 1, figsize=(3, 6), tight_layout=True)
+  ax.bar(
       categories, mean_values, yerr=sem_values, color=['tab:red', 'tab:blue'],
       capsize=10, error_kw=dict(ecolor='0.2', lw=2.5, capsize=10, capthick=2.5)
   )
@@ -348,10 +347,8 @@ def plot_num_features(
   ax.tick_params(axis='both', which='minor', width=2.5, color='0.2')
   # Set labels font size to 14
   ax.set_ylabel('Number of Features', fontsize=14, weight='bold', color='0.2')
-  # Limit the y-axis to the max point
-  max_point = max(max(std_points), max(opt_points))
   # Add a line to show the p-value
-  y, h, col = max(mean_values) + max(sem_values) + 60, 5, 'k'
+  y, h = max(mean_values) + max(sem_values) + 60, 5
   ax.plot([0, 0, 1, 1], [y, y + h, y + h, y], lw=2, c='0.2')
   ax.text(
       0.5, y + h + 5, p_text, ha='center', va='bottom', color='0.2',
@@ -379,13 +376,13 @@ def main():
   # Define current folder using this file
   CWD = Path(os.path.dirname(os.path.abspath(__file__)))
   # Define folder that contains the revision chip type dataset
-  REV_PATH = Path("D:/Thesis/chapter_one/data/LIVER/")
+  LIVER_PATH = Path(os.path.join(CWD, "..", "data", "LIVER"))
   # Define folder that contains raw data
-  REV_RAW_DATA = REV_PATH.joinpath("raw")
+  RAW_DATA = LIVER_PATH.joinpath("raw")
   # Define folder to save processed data
-  REV_PROCESSED_DATA = REV_PATH.joinpath("processed")
+  PROCESSED_DATA = LIVER_PATH.joinpath("processed")
   # Define file that contains dhg metadata
-  METADATA_PATH = REV_PATH.joinpath("metadata.csv")
+  METADATA_PATH = LIVER_PATH.joinpath("metadata.csv")
   # Define mass range start value
   MZ_START = 50
   # Define mass range end value
@@ -401,11 +398,11 @@ def main():
   # Read metadata csv
   metadata_df = pd.read_csv(METADATA_PATH)
   # Loop over each ROI in data frame
-  for index, roi in metadata_df.iterrows():
+  for _, roi in metadata_df.iterrows():
     # Define path to msi imzML file
-    msi_path = os.path.join(REV_RAW_DATA, f"{roi.file_name}.imzML")
+    msi_path = os.path.join(RAW_DATA, f"{roi.file_name}.imzML")
     # Define path to new msi imzML file after processing
-    output_path = os.path.join(REV_PROCESSED_DATA, f"{roi.sample_file_name}")
+    output_path = os.path.join(PROCESSED_DATA, f"{roi.sample_file_name}")
     # Create output folder if doesn't exist
     Path(output_path).mkdir(parents=True, exist_ok=True)
     # Process msi
@@ -418,7 +415,7 @@ def main():
   # Create dict of msi parsers and masks
   parsers = {}
   masks = {}
-  for folder in REV_PROCESSED_DATA.iterdir():
+  for folder in PROCESSED_DATA.iterdir():
     name = folder.stem
     parsers[name] = ImzMLParser(folder.joinpath("meaningful_signal.imzML"))
     masks[name] = np.load(folder.joinpath("segmentation.npy"), mmap_mode='r')
