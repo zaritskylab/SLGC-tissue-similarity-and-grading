@@ -108,8 +108,7 @@ And lastly chip types data analysis and figure creation requires the DESI chip t
 ## Citation
 If you use this code, please cite: 
 
-```
-Martella, D. A., Rose, L. A., Rouatbi, N., Gu, C., Caprettini, V., Jensen, M., ... & Chiappini, C. (2023). Nondestructive Spatial Lipidomics for Glioma Classification. bioRxiv, 2023-03.
-```
+> Martella, D. A., Rose, L. A., Rouatbi, N., Gu, C., Caprettini, V., Jensen, M., ... & Chiappini, C. (2023). Nondestructive Spatial Lipidomics for Glioma Classification. bioRxiv, 2023-03
+
 
 Please contact leor.rose@gmail.com or assafzar@gmail.com for bugs or questions.
