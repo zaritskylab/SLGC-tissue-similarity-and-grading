@@ -8,159 +8,15 @@ import os
 import random
 import numpy as np
 import pandas as pd
-from typing import Dict
+from typing import Dict, Tuple
 from pathlib import Path
 from matplotlib import pyplot as plt
 from scipy.signal import find_peaks
 from scipy.stats import sem, ttest_ind
 from pyimzml.ImzMLParser import ImzMLParser
-from processing import process
+from processing import process, aligned_representation
+from chip_types_data_analysis import (num_features_df, msi_spatial_num_features, msi_mean_num_features, plot_num_features_thresholds)
 from utils import read_msi
-
-
-def spectra_num_features(spectra: np.ndarray, percentage=0.3) -> int:
-  """
-  Calculates the number of spectra features based on a given intensity
-  percentage threshold.
-
-  Args:
-    spectra (np.ndarray): The array of spectra intensities.
-    percentage (float, optional): The threshold percentage for considering a
-        peak significant. Defaults to 0.3.
-
-  Returns:
-    int: The number of significant spectra features.
-    
-  """
-  # Find all local maxima in the spectra
-  indexes = find_peaks(spectra)[0]
-  if len(indexes) == 0:
-    # Return 0 if no peaks are found
-    return 0
-  # Find the highest peak value
-  top_peak = spectra[indexes].max()
-  # Count and return peaks that are at least a certain percentage of the top
-  # peak value
-  return (spectra[indexes] >= (top_peak * percentage)).sum()
-
-
-def msi_sum_spectra_num_features(
-    p: ImzMLParser, mask: np.ndarray, percentage=0.3
-) -> int:
-  """
-  Calculates the number of significant spectra features from the sum of 
-  spectra in a masked area.
-
-  Args:
-    p (ImzMLParser): The ImzML parser object.
-    mask (np.ndarray): A binary mask to select specific regions in the MSI data.
-    percentage (float, optional): The threshold percentage for considering a
-        peak significant. Defaults to 0.3.
-
-  Returns:
-    int: The number of significant spectra features.
-  """
-  # Read MSI data and get the intensity matrix
-  msi = read_msi(p)[1]
-  # Apply the mask to the MSI data
-  spectras = msi[mask]
-  # Sum the spectra within the masked region
-  sum_spectra = np.sum(spectras, axis=0)
-  # Calculate and return the number of significant spectra features
-  return spectra_num_features(sum_spectra, percentage=percentage)
-
-
-def msi_mean_spectra_num_features(
-    p: ImzMLParser, mask: np.ndarray, percentage=0.3
-) -> int:
-  """
-  Calculates the number of significant spectra features from the mean of 
-  spectra in a masked area.
-
-  Args:
-    p (ImzMLParser): The ImzML parser object.
-    mask (np.ndarray): A binary mask to select specific regions in the MSI data.
-    percentage (float, optional): The threshold percentage for considering a
-        peak significant. Defaults to 0.3.
-
-  Returns:
-    int: The number of significant spectra features.
-  """
-  # Read MSI data and get the intensity matrix
-  msi = read_msi(p)[1]
-  # Apply the mask to the MSI data
-  spectras = msi[mask]
-  # Calculate the mean of the spectra within the masked region
-  mean_spectra = np.mean(spectras, axis=0)
-  # Calculate and return the number of significant spectra features
-  return spectra_num_features(mean_spectra, percentage=percentage)
-
-
-def msi_mean_num_features(
-    p: ImzMLParser, mask: np.ndarray, percentage=0.3
-) -> int:
-  """
-  Calculates the mean number of spectra features across all spectra in a 
-  masked area.
-
-  Args:
-    p (ImzMLParser): The ImzML parser object.
-    mask (np.ndarray): A binary mask to select specific regions in the MSI data.
-    percentage (float, optional): The threshold percentage for considering a
-        peak significant. Defaults to 0.3.
-
-
-  Returns:
-    int: The mean number of significant spectra features.
-  """
-  # Read MSI data and get the intensity matrix
-  msi = read_msi(p)[1]
-  # Apply the mask to the MSI data
-  spectras = msi[mask]
-  # List to store the number of features for each spectrum
-  msi_num_features = []
-  # Iterate over each spectrum and calculate its number of features
-  for spectra in spectras:
-    msi_num_features.append(
-        spectra_num_features(spectra, percentage=percentage)
-    )
-  # Calculate and return the mean number of features
-  return np.mean(msi_num_features)
-
-
-def msi_spatial_num_features(
-    p: ImzMLParser, mask: np.ndarray, percentage=0.3
-) -> np.ndarray:
-  """
-  Calculates the spatial distribution of spectra features in a masked area of
-  MSI data.
-
-  Args:
-    p (ImzMLParser): The ImzML parser object.
-    mask (np.ndarray): A binary mask to select specific regions in the MSI data.
-    percentage (float, optional): The threshold percentage for considering a
-        peak significant. Defaults to 0.3.
-
-  Returns:
-    np.ndarray: A 2D array representing the number of spectra features at each 
-        position.
-  """
-  # Read MSI data and get the intensity matrix
-  msi = read_msi(p)[1]
-  # Initialize an array to store the spatial number of features
-  msi_spatial_num_features = np.zeros(mask.shape)
-  # Loop over each pixel in the mask
-  for i in range(mask.shape[0]):
-    for j in range(mask.shape[1]):
-      if mask[i, j]:
-        # Calculate the number of features for the current pixel
-        msi_spatial_num_features[
-            i, j] = spectra_num_features(msi[i, j, :], percentage=percentage)
-      else:
-        # Set the value to NaN if the pixel is not in the mask
-        msi_spatial_num_features[i, j] = np.nan
-  return msi_spatial_num_features
-
 
 def concatenate_images_array(
     img_1: np.ndarray, img_2: np.ndarray
@@ -203,7 +59,8 @@ def concatenate_images_array(
 
 def plot_spatial_num_features(
     parsers: Dict[str, ImzMLParser], masks: Dict[str, np.ndarray],
-    metadata_df: pd.DataFrame, save_path: Path
+    metadata_df: pd.DataFrame, save_path: Path,
+    mz_range: Tuple[float, float] = (600, 900)
 ) -> None:
   """
   Plots and saves an image that represents spatially the number of features 
@@ -217,12 +74,17 @@ def plot_spatial_num_features(
     metadata_df (pd.DataFrame): DataFrame containing metadata for the
         samples.
     save_path (Path): Path object where the output image will be saved.
+    mz_range (Tuple[float,float]): Start and end m/z value to consider. 
+        Defaults to (600, 900).
+
   """
   # Dictionary to store spatial number of features for each sample
   spatial_num_features = {}
   # Loop through each parser and calculate spatial number of features
   for name, p in parsers.items():
-    spatial_num_features[name] = msi_spatial_num_features(p, masks[name])
+    spatial_num_features[name] = msi_spatial_num_features(
+        p, masks[name], mz_range=mz_range
+    )
   # List to store images for each group
   images = []
   # Group the metadata by file name and process each group
@@ -238,11 +100,14 @@ def plot_spatial_num_features(
   # Create a combined image from the first two images in the list
   combined_img = concatenate_images_array(
       np.rot90(images[1], 1), np.rot90(images[0], 1)
-  )[:-2, 4:-6]
+  )[:-14, 14:-8]
   # Create a figure for plotting
   fig, ax = plt.subplots(1, 1, figsize=(5, 5), tight_layout=True)
   # Show the combined image
-  shw = ax.imshow(combined_img, cmap='jet')
+  shw = ax.imshow(
+      combined_img, cmap='magma',
+      vmax=np.percentile(combined_img[~np.isnan(combined_img)], 99)
+  )
   # Add a color bar to the plot
   bar = fig.colorbar(shw, orientation='vertical')
   bar.set_label(
@@ -256,7 +121,7 @@ def plot_spatial_num_features(
     l.set_color('0.2')
   # Set the ticks for the color bar
   ticks = np.linspace(
-      combined_img[~np.isnan(combined_img)].max() - 22,
+      np.percentile(combined_img[~np.isnan(combined_img)], 99),
       combined_img[~np.isnan(combined_img)].min(), 6
   )
   bar.set_ticks(ticks)
@@ -275,7 +140,8 @@ def plot_spatial_num_features(
 
 def plot_num_features(
     parsers: Dict[str, ImzMLParser], masks: Dict[str, np.ndarray],
-    metadata_df: pd.DataFrame, save_path: Path
+    metadata_df: pd.DataFrame, save_path: Path,
+    mz_range: Tuple[float, float] = (600, 900)
 ):
   """
   Plots and saves a bar chart comparing the number of features between standard 
@@ -289,6 +155,9 @@ def plot_num_features(
     metadata_df (pd.DataFrame): DataFrame containing metadata for the
         samples.
     save_path (Path): Path object where the output image will be saved.
+    mz_range (Tuple[float,float]): Start and end m/z value to consider. 
+        Defaults to (600, 900).
+
   """
   # Create dict to store num features
   num_features = {}
@@ -298,7 +167,8 @@ def plot_num_features(
     for index, row in group.iterrows():
       # Get MSO num features
       msi_features = msi_mean_num_features(
-          parsers[row.sample_file_name], masks[row.sample_file_name]
+          parsers[row.sample_file_name], masks[row.sample_file_name],
+          mz_range=mz_range
       )
       # Update group number of features list
       num_features[group_name] = num_features.get(group_name,
@@ -333,7 +203,7 @@ def plot_num_features(
   )
   # Add individual points to the bars
   ax.plot(
-      np.repeat(0, len(std_points)), std_points, 's', markersize=7, color='0.2'
+      np.repeat(0, len(std_points)), std_points, 'o', markersize=7, color='0.2'
   )
   ax.plot(
       np.repeat(1, len(opt_points)), opt_points, 's', markersize=7, color='0.2'
@@ -369,6 +239,11 @@ def plot_num_features(
   # Display the plot
   plt.show()
 
+  # Save number of features csv
+  pd.DataFrame(num_features).to_csv(
+      save_path.joinpath("number_of_features.csv"), index=False
+  )
+
 
 def main():
   """Function containing main code"""
@@ -378,6 +253,8 @@ def main():
   LIVER_PATH = Path(os.path.join(CWD, "..", "data", "LIVER"))
   # Define folder that contains raw data
   RAW_DATA = LIVER_PATH.joinpath("raw")
+  # Define folder to save aligned data
+  ALIGNED_DATA = LIVER_PATH.joinpath("aligned")
   # Define folder to save processed data
   PROCESSED_DATA = LIVER_PATH.joinpath("processed")
   # Define file that contains dhg metadata
@@ -388,18 +265,45 @@ def main():
   MZ_END = 1200
   # Define mass resolution of the data
   MASS_RESOLUTION = 0.025
+  # Define lock mass reference peak
+  LOCK_MASS_PEAK = 885.5498
+  # Define lock mass tol
+  LOCK_MASK_TOL = 0.3
+  # Define mz where lipid start
+  MZ_LIPID_START = 600
+  # Define mz where lipid end
+  MZ_LIPID_END = 900
   # Define representative peaks
-  REPRESENTATIVE_PEAKS = [682.58, 844.64, 860.63, 888.62, 600.49, 834.53]
+  representative_peaks_map = {
+      'std': [634.40, 794.54, 886.55], 'opt': [794.5, 834.5, 886.6]
+  }
   # Define random seed
   SEED = 42
   random.seed(SEED)
   np.random.seed(SEED)
   # Read metadata csv
   metadata_df = pd.read_csv(METADATA_PATH)
+  """
+  # Loop over each unique msi imzML file
+  for file_name in metadata_df.file_name.unique():
+    # Define path to msi imzML file
+    msi_path = os.path.join(RAW_DATA, f"{file_name}.imzML")
+    # Define path to new msi imzML file after alignment
+    output_path = os.path.join(ALIGNED_DATA, f"{file_name}.imzML")
+    # Align MSI
+    aligned_representation(msi_path, output_path, LOCK_MASS_PEAK, LOCK_MASK_TOL)
+
   # Loop over each ROI in data frame
   for _, roi in metadata_df.iterrows():
+    #
+    representative_peaks = next(
+        (
+            value for key, value in representative_peaks_map.items()
+            if key in roi.sample_file_name
+        ), None
+    )
     # Define path to msi imzML file
-    msi_path = os.path.join(RAW_DATA, f"{roi.file_name}.imzML")
+    msi_path = os.path.join(ALIGNED_DATA, f"{roi.file_name}.imzML")
     # Define path to new msi imzML file after processing
     output_path = os.path.join(PROCESSED_DATA, f"{roi.sample_file_name}")
     # Create output folder if doesn't exist
@@ -407,8 +311,9 @@ def main():
     # Process msi
     process(
         msi_path, output_path, roi.x_min, roi.x_max, roi.y_min, roi.y_max,
-        MZ_START, MZ_END, MASS_RESOLUTION, REPRESENTATIVE_PEAKS
+        MZ_START, MZ_END, MASS_RESOLUTION, representative_peaks
     )
+  """
   # Define path to save figures
   PLOT_PATH = Path(CWD / "liver/")
   # Create dirs
@@ -421,9 +326,15 @@ def main():
     parsers[name] = ImzMLParser(folder.joinpath("meaningful_signal.imzML"))
     masks[name] = np.load(folder.joinpath("segmentation.npy"), mmap_mode='r')
   # Plot figures
-  plot_spatial_num_features(parsers, masks, metadata_df, PLOT_PATH)
-  plot_num_features(parsers, masks, metadata_df, PLOT_PATH)
-
+  plot_spatial_num_features(
+      parsers, masks, metadata_df, PLOT_PATH, (MZ_LIPID_START, MZ_LIPID_END)
+  )
+  plot_num_features(
+      parsers, masks, metadata_df, PLOT_PATH, (MZ_LIPID_START, MZ_LIPID_END)
+  )
+  num_features = num_features_df(parsers, masks, np.arange(1.0, 3.1, 0.2))
+  num_features.to_csv(PLOT_PATH.joinpath("num_features.csv"), index=False)
+  plot_num_features_thresholds(num_features, PLOT_PATH)
 
 if __name__ == '__main__':
   main()

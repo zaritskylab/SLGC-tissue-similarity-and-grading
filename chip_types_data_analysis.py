@@ -8,15 +8,206 @@ import random
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from typing import Dict
+from typing import Dict, Tuple
 from pathlib import Path
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
 from pyimzml.ImzMLParser import ImzMLParser
-from processing import process
+from scipy.signal import find_peaks
+from processing import process, aligned_representation
 from correlation import correlation_analysis
 from utils import read_msi
-from liver_data_analysis import msi_mean_num_features
+from esi_data_analysis import (
+    export_spectras_metrics, plot_spectras_best_fit_hex,
+    plot_spectras_best_fit_scatter
+)
+
+
+def spectra_significant_features_threshold(
+    spectra: np.ndarray, percentage=0.3
+) -> int:
+  """
+  Calculates the number of spectra features based on a given intensity
+  percentage threshold.
+
+  Args:
+    spectra (np.ndarray): The array of spectra intensities.
+    percentage (float, optional): The threshold percentage for considering a
+        peak significant. Defaults to 0.3.
+
+  Returns:
+    int: The number of significant spectra features.
+    
+  """
+  # Find all local maxima in the spectra
+  indexes = find_peaks(spectra)[0]
+  if len(indexes) == 0:
+    # Return 0 if no peaks are found
+    return 0
+  # Find the highest peak value
+  top_peak = spectra[indexes].max()
+  # Count and return peaks that are at least a certain percentage of the top
+  # peak value
+  return (spectra[indexes] >= (top_peak * percentage)).sum()
+
+
+def spectra_significant_features_z_score(
+    spectra: np.ndarray, threshold: float = 2.0
+):
+  """
+  Counts the number of significant values in a spectra based on a z-score 
+  threshold.
+
+  Args:
+    spectra (np.ndarray): The array of spectra intensities.
+    threshold (float, optional): The threshold for determining significance. 
+        Defaults to 2 for a 95% confidence level.
+  
+  Returns:
+    int: The number of significant spectra features.     
+  
+  """
+  return np.sum(spectra > threshold)
+
+
+def msi_sum_spectra_num_features(
+    p: ImzMLParser, mask: np.ndarray, threshold=2,
+    mz_range: Tuple[float, float] = (600, 900)
+) -> int:
+  """
+  Calculates the number of significant spectra features from the sum of 
+  spectra in a masked area.
+
+  Args:
+    p (ImzMLParser): The ImzML parser object.
+    mask (np.ndarray): A binary mask to select specific regions in the MSI data.
+    threshold (float, optional): The threshold for determining significance. 
+        Defaults to 2 for a 95% confidence level.
+    mz_range (Tuple[float,float]): Start and end m/z value to consider. 
+        Defaults to (600, 900).
+
+  Returns:
+    int: The number of significant spectra features.
+
+  """
+  # Read MSI data and get the intensity matrix
+  mzs, msi = read_msi(p)
+  # Apply the mask to the MSI data
+  spectras = msi[mask]
+  # Sum the spectra within the masked region
+  sum_spectra = np.sum(spectras, axis=0)
+  # Calculate and return the number of significant spectra features
+  return spectra_significant_features_z_score(
+      sum_spectra[(mzs >= mz_range[0]) & (mzs <= mz_range[1])], threshold
+  )
+
+
+def msi_mean_spectra_num_features(
+    p: ImzMLParser, mask: np.ndarray, threshold=2,
+    mz_range: Tuple[float, float] = (600, 900)
+) -> int:
+  """
+  Calculates the number of significant spectra features from the mean of 
+  spectra in a masked area.
+
+  Args:
+    p (ImzMLParser): The ImzML parser object.
+    mask (np.ndarray): A binary mask to select specific regions in the MSI data.
+    threshold (float, optional): The threshold for determining significance. 
+        Defaults to 2 for a 95% confidence level.
+    mz_range (Tuple[float,float]): Start and end m/z value to consider. 
+        Defaults to (600, 900).
+
+  Returns:
+    int: The number of significant spectra features.
+
+  """
+  # Read MSI data and get the intensity matrix
+  mzs, msi = read_msi(p)
+  # Apply the mask to the MSI data
+  spectras = msi[mask]
+  # Calculate the mean of the spectra within the masked region
+  mean_spectra = np.mean(spectras, axis=0)
+  # Calculate and return the number of significant spectra features
+  return spectra_significant_features_z_score(
+      mean_spectra[(mzs >= mz_range[0]) & (mzs <= mz_range[1])], threshold
+  )
+
+
+def msi_mean_num_features(
+    p: ImzMLParser, mask: np.ndarray, threshold=2,
+    mz_range: Tuple[float, float] = (600, 900)
+) -> int:
+  """
+  Calculates the mean number of spectra features across all spectra in a 
+  masked area.
+
+  Args:
+    p (ImzMLParser): The ImzML parser object.
+    mask (np.ndarray): A binary mask to select specific regions in the MSI data.
+    threshold (float, optional): The threshold for determining significance. 
+        Defaults to 2 for a 95% confidence level.
+    mz_range (Tuple[float,float]): Start and end m/z value to consider. 
+        Defaults to (600, 900).
+
+  Returns:
+    int: The mean number of significant spectra features.
+
+  """
+  # Read MSI data and get the intensity matrix
+  mzs, msi = read_msi(p)
+  # Apply the mask to the MSI data
+  spectras = msi[mask]
+  # List to store the number of features for each spectrum
+  msi_num_features = []
+  # Iterate over each spectrum and calculate its number of features
+  for spectra in spectras:
+    msi_num_features.append(
+        spectra_significant_features_z_score(
+            spectra[(mzs >= mz_range[0]) & (mzs <= mz_range[1])], threshold
+        )
+    )
+  # Calculate and return the mean number of features
+  return np.mean(msi_num_features)
+
+
+def msi_spatial_num_features(
+    p: ImzMLParser, mask: np.ndarray, threshold=2,
+    mz_range: Tuple[float, float] = (600, 900)
+) -> np.ndarray:
+  """
+  Calculates the spatial distribution of spectra features in a masked area of
+  MSI data.
+
+  Args:
+    p (ImzMLParser): The ImzML parser object.
+    mask (np.ndarray): A binary mask to select specific regions in the MSI data.
+    threshold (float, optional): The threshold for determining significance. 
+        Defaults to 2 for a 95% confidence level.
+    mz_range (Tuple[float,float]): Start and end m/z value to consider. 
+        Defaults to (600, 900).
+
+  Returns:
+    np.ndarray: A 2D array representing the number of spectra features at each 
+        position.
+
+  """
+  # Read MSI data and get the intensity matrix
+  mzs, msi = read_msi(p)
+  # Initialize an array to store the spatial number of features
+  msi_spatial_num_features = np.zeros(mask.shape)
+  # Loop over each pixel in the mask
+  for i in range(mask.shape[0]):
+    for j in range(mask.shape[1]):
+      if mask[i, j]:
+        # Calculate the number of features for the current pixel
+        msi_spatial_num_features[i, j] = spectra_significant_features_z_score(
+            msi[i, j, (mzs >= mz_range[0]) & (mzs <= mz_range[1])], threshold
+        )
+      else:
+        # Set the value to NaN if the pixel is not in the mask
+        msi_spatial_num_features[i, j] = np.nan
+  return msi_spatial_num_features
 
 
 def plot_msi_segmentation(
@@ -38,29 +229,21 @@ def plot_msi_segmentation(
   num_groups = len(grouped)
   # Creating a grid of subplots
   _, axs = plt.subplots(
-      max_rows, num_groups, figsize=(num_groups * 2, max_rows * 2)
+      num_groups, max_rows, figsize=(max_rows * 2, num_groups * 2)
   )
-  # Ensuring axs is always a 2D array for consistency in indexing
-  if num_groups == 1:
-    axs = np.expand_dims(axs, axis=-1)
-  if max_rows == 1:
-    axs = np.expand_dims(axs, axis=0)
   # Plotting each mask image in the appropriate subplot
   for group_index, (_, group) in enumerate(grouped):
     for image_index, (_, row) in enumerate(group.iterrows()):
-      # Determine the subplot index
-      subplot_index = image_index if group_index == 0 else image_index + 1
       # Access the subplot axis
-      ax = axs[subplot_index, group_index]
+      ax = axs[group_index, image_index]
       try:
         # Get the mask image
         img = masks[row.sample_file_name]
         # Display the image
-        ax.imshow(img, cmap="gray_r")
+        ax.imshow(img, cmap="gray_r", aspect="auto")
         # Customizing the ticks for better readability
-        ax.set_xticks([0, img.shape[1] - 1])
-        ax.set_yticks([0, img.shape[0] - 1])
-        ax.tick_params(axis='both', length=0)
+        ax.set_xticks([])
+        ax.set_yticks([])
         # Customizing tick labels
         for yticklabel in ax.get_yticklabels():
           yticklabel.set_fontweight('bold')
@@ -71,21 +254,25 @@ def plot_msi_segmentation(
           xticklabel.set_fontsize(14)
           xticklabel.set_color('0.2')
         # Customizing the spines for aesthetics
-        for axis in ['bottom', 'left']:
+        for axis in ['bottom', 'left', 'top', 'right']:
+          ax.spines[axis].set_visible(True)
           ax.spines[axis].set_linewidth(2.5)
           ax.spines[axis].set_color('0.2')
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
+        # Add labels to to grid
+        if group_index == num_groups - 1:
+          ax.set_xlabel(
+              "\n".join(get_sample_type(row.sample_file_name).split("_")
+                       ).capitalize(), fontsize=14, weight='bold', color='0.2'
+          )
+        if image_index == 0:
+          ax.set_ylabel(
+              row.sample_file_name.split("_")[0], fontsize=14, weight='bold',
+              color='0.2', rotation=0, labelpad=15
+          )
       except FileNotFoundError:
         # Hide the axis if the file is not found and print a warning
         ax.axis('off')
         print(f"File not found: {row['ImagePath']}")
-    # Turning off unused subplots to maintain a clean grid
-    for ax in axs[len(group) + (0 if group_index == 0 else 1):, group_index]:
-      ax.axis('off')
-    # Specifically turning off the skipped subplot for non-first groups
-    if group_index != 0:
-      axs[0, group_index].axis('off')
   # Add space between subplots
   plt.tight_layout()
   # Save the plot
@@ -121,11 +308,7 @@ def plot_spectras_corr(processed_path: str, output_path: str) -> None:
   ax = sns.heatmap(
       filtered_corr_matrix, annot=True, cbar=False, cmap="YlGn", fmt=".2f",
       vmin=-1, vmax=1, linewidth=2, linecolor='w', square=True, ax=ax,
-      annot_kws={
-          "fontsize": 14,
-          "fontweight": 'bold',
-          'color': '0.2'
-      }
+      annot_kws={"fontsize": 14, "fontweight": 'bold', 'color': '0.2'}
   )
   # Rename x and y ticks labels
   x_ticks_labels = [
@@ -190,17 +373,17 @@ def get_sample_type(sample_file_name) -> str:
 
 def num_features_df(
     parsers: Dict[str, ImzMLParser], masks: Dict[str, np.ndarray],
-    percentages: np.ndarray
+    thresholds: np.ndarray
 ) -> pd.DataFrame:
-  """Creates a dataframe containing the number of features in each percentage
-  threshold for each parser.
+  """Creates a data frame containing the number of features in each threshold 
+      for each parser.
 
   Args:
     parser (Dict[str, ImzMLParser]): A dictionary containing ImzMLParser 
         objects with keys as sample names.
     masks (Dict[str, np.ndarray]): A dictionary containing masks for each
         sample.
-    save_path (np.ndarray): Array of percentages to calculate features.
+    thresholds (np.ndarray): Array thresholds for determining significance.
   
   """
   # Dictionary to store number of features for each sample
@@ -208,16 +391,14 @@ def num_features_df(
   # Loop through each parser and calculate number of features
   for name, p in parsers.items():
     name_num_features = []
-    for percentage in percentages:
-      name_num_features.append(
-          msi_mean_num_features(p, masks[name], percentage)
-      )
+    for threshold in thresholds:
+      name_num_features.append(msi_mean_num_features(p, masks[name], threshold))
     num_features[name] = name_num_features
   # Creating a DataFrame from the dictionary
   df = pd.DataFrame.from_dict(num_features)
   # Transposing the DataFrame and setting the columns
   df_transposed = df.T
-  df_transposed.columns = percentages
+  df_transposed.columns = thresholds
   # Resetting the index to make the original column names a regular column
   df_reset = df_transposed.reset_index()
   # Applying the function to extract the type
@@ -225,34 +406,33 @@ def num_features_df(
   df_reset['Type'] = types
   # Melting the DataFrame for a suitable format
   df_melted = df_reset.melt(
-      id_vars='Type', var_name='Peak Percentage',
-      value_name='Number of Features'
+      id_vars='Type', var_name='Peak Threshold', value_name='Number of Features'
   )
   # Removing non numeric values
-  df_melted['Peak Percentage'] = pd.to_numeric(
-      df_melted['Peak Percentage'], errors='coerce'
+  df_melted['Peak Threshold'] = pd.to_numeric(
+      df_melted['Peak Threshold'], errors='coerce'
   )
-  df_melted = df_melted.dropna(subset=['Peak Percentage'])
+  df_melted = df_melted.dropna(subset=['Peak Threshold'])
   return df_melted
 
 
 def plot_num_features_thresholds(num_features: pd.DataFrame, save_path: Path):
   """Plots and saves a line plot comparing the number of features between chip
-  types in each percentage threshold.
+  types in each threshold.
 
   Args:
     num_features_df (pd.DataFrame): dataframe containing the number of features
-        in each percentage threshold for each parser.
+        in each threshold for each parser.
     save_path (Path): Path object where the output image will be saved.
   
   """
   # Creating the line plot with the corrected x-ticks
-  plt.figure(figsize=(7, 7))
+  plt.figure(figsize=(8, 8))
   ax = sns.lineplot(
-      data=num_features, x='Peak Percentage', y='Number of Features',
-      hue='Type', linewidth=2
+      data=num_features, x='Peak Threshold', y='Number of Features', hue='Type',
+      linewidth=2
   )
-  plt.xticks(sorted(num_features['Peak Percentage'].unique()))
+  plt.xticks(sorted(num_features['Peak Threshold'].unique()))
 
   # Customize the spines
   for axis in ['bottom', 'left']:
@@ -264,26 +444,38 @@ def plot_num_features_thresholds(num_features: pd.DataFrame, save_path: Path):
   for yticklabel in ax.get_yticklabels():
     yticklabel
     yticklabel.set_fontweight('bold')
-    yticklabel.set_fontsize(14)
+    yticklabel.set_fontsize(10)
     yticklabel.set_color('0.2')
   for xticklabel in ax.get_xticklabels():
     xticklabel.set_fontweight('bold')
-    xticklabel.set_fontsize(14)
+    xticklabel.set_fontsize(10)
     xticklabel.set_color('0.2')
     xticklabel.set_rotation(90)
   # Remove ticks line
   ax.tick_params(axis='both', length=0)
   # Customize the axis labels
   ax.set_ylabel("Number of Features", fontsize=14, weight='bold', color='0.2')
-  ax.set_xlabel("Peak Percentage", fontsize=14, weight='bold', color='0.2')
+  ax.set_xlabel("Threshold (Z-score)", fontsize=14, weight='bold', color='0.2')
 
   # Creating legend and Customizing it
-  leg = plt.legend(loc='upper right', prop={"size": 14})
+  leg = plt.legend(
+      loc='center left', bbox_to_anchor=(1, 0.5), ncol=1, fancybox=True,
+      shadow=True, prop={"size": 14}
+  )
+
   leg.set_frame_on(False)
+  # Sort legend
   for line in leg.get_lines():
     line.set_linewidth(3.5)
   for text in leg.get_texts():
-    text.set_text(" ".join(text.get_text().split("_")).capitalize())
+    text_parts = text.get_text().split("_")
+    if len(text_parts) > 2:
+      parts_new = []
+      for i in range(0, len(text_parts), 2):
+        parts_new.append(" ".join(text_parts[i:i + 2]))
+      text.set_text("\n".join(parts_new).capitalize())
+    else:
+      text.set_text(" ".join(text_parts).capitalize())
     text.set_weight('bold')
     text.set_color('0.2')
   # Add space between subplots
@@ -298,74 +490,76 @@ def plot_num_features_thresholds(num_features: pd.DataFrame, save_path: Path):
 
 
 def plot_num_features(
-    num_features: pd.DataFrame, percentage: float, save_path: Path
+    num_features: pd.DataFrame, threshold: float, save_path: Path
 ):
   """Plots and saves a bar chart comparing the number of features between chip
-  types in a certain percentage.
+  types in a certain threshold.
 
   Args:
     num_features_df (pd.DataFrame): dataframe containing the number of features
-        in each percentage threshold for each parser.
-    percentage (float): percentage to get number of features. (should be in the
-        already calculated percentages)
+        in each threshold for each parser.
+    threshold (float): The threshold for determining significance.
     save_path (Path): Path object where the output image will be saved.
   """
-  #
-  num_features = num_features[num_features["Peak Percentage"] == percentage]
-
+  # Get number of features for corresponding peak threshold
+  num_features = num_features[num_features["Peak Threshold"] == threshold]
   # Now we plot the bars for the mean and add error bars for the SEM.
-  _, ax = plt.subplots(1, 1, figsize=(10, 12))
-
+  _, ax = plt.subplots(1, 1, figsize=(8, 8))
+  # create color palette
+  palette_dict = {
+      label: color for label, color in
+      zip(num_features['Type'].unique(), sns.color_palette())
+  }
   # Create a bar plot using seaborn with custom error bars
   ax = sns.barplot(
-      data=num_features, x="Type", y="Number of Features", errorbar=lambda x:
-      (x.mean() - x.sem(), x.mean() + x.sem()), capsize=0.15
+      data=num_features, x="Type", y="Number of Features", hue="Type",
+      errorbar=lambda x: (x.mean() - x.sem(), x.mean() + x.sem()), capsize=0.15,
+      palette=palette_dict
   )
   sns.scatterplot(
       data=num_features, x="Type", y="Number of Features", legend=False,
       zorder=10, color='0.2', edgecolor='0.2', marker='s', s=70
   )
-
   # Customize the spines
   for axis in ['bottom', 'left']:
     ax.spines[axis].set_linewidth(2.5)
     ax.spines[axis].set_color('0.2')
   ax.spines['top'].set_visible(False)
   ax.spines['right'].set_visible(False)
-
   # Customize ticks
-  plt.xticks(fontsize=14, fontweight='bold', color='0.2')
+  plt.xticks(fontsize=10, fontweight='bold', color='0.2')
   plt.xticks(rotation=45)
-  plt.yticks(fontsize=14, fontweight='bold', color='0.2')
+  plt.yticks(fontsize=10, fontweight='bold', color='0.2')
   ax.set_xticklabels([])
-
   # Add legend to the plot with a title
   legend_patches = [
-      Patch(color=color, label=label) for label, color in
-      zip(num_features['Type'].unique(), sns.color_palette())
+      Patch(color=color, label=label) for label, color in palette_dict.items()
   ]
   leg = ax.legend(
-      loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=2, fancybox=True,
+      loc='center left', bbox_to_anchor=(1, 0.5), ncol=1, fancybox=True,
       shadow=True, handles=legend_patches, prop={"size": 14}
   )
+
   leg.set_frame_on(False)
+  # Sort legend
   for line in leg.get_lines():
     line.set_linewidth(3.5)
   for text in leg.get_texts():
-    text.set_text(" ".join(text.get_text().split("_")).capitalize())
+    text_parts = text.get_text().split("_")
+    if len(text_parts) > 2:
+      parts_new = []
+      for i in range(0, len(text_parts), 2):
+        parts_new.append(" ".join(text_parts[i:i + 2]))
+      text.set_text("\n".join(parts_new).capitalize())
+    else:
+      text.set_text(" ".join(text_parts).capitalize())
     text.set_weight('bold')
     text.set_color('0.2')
-
   # Remove ticks line
   ax.tick_params(axis='both', length=0)
-
-  # Set labels font size to 14
-  ax.set_ylabel('Number of Features', fontsize=14, weight='bold', color='0.2')
-
-  # Improve Aesthetics
-  plt.xlabel('')
-  plt.ylabel('Number of Features')
-
+  # Set labels
+  ax.set_ylabel('Number of Features', fontsize=16, weight='bold', color='0.2')
+  ax.set_xlabel("")
   # Add space between subplots and show the plot
   plt.tight_layout()
   # Save the plot
@@ -397,14 +591,22 @@ def plot_area_ratio(masks: Dict[str, np.ndarray], save_path: Path):
                                  ) and (mask_2_type == "tissue_section"):
         areas.append([mask_1_type, mask_1.sum() / mask_2.sum()])
   areas = pd.DataFrame(areas, columns=["Type", "Area Ratio"])
+  areas.to_csv(save_path.joinpath("area_ratio.csv"), index=False)
+
+  # create color palette
+  palette_dict = {
+      label: color
+      for label, color in zip(areas['Type'].unique(), sns.color_palette())
+  }
 
   # Now we plot the bars for the mean and add error bars for the SEM.
-  _, ax = plt.subplots(1, 1, figsize=(10, 10))
+  _, ax = plt.subplots(1, 1, figsize=(8, 8))
 
   # Create a bar plot using seaborn with custom error bars
   ax = sns.barplot(
       data=areas, x="Type", y="Area Ratio", errorbar=lambda x:
-      (x.mean() - x.sem(), x.mean() + x.sem()), capsize=0.15
+      (x.mean() - x.sem(), x.mean() + x.sem()), capsize=0.15,
+      palette=palette_dict
   )
   sns.scatterplot(
       data=areas, x="Type", y="Area Ratio", legend=False, zorder=10,
@@ -419,25 +621,33 @@ def plot_area_ratio(masks: Dict[str, np.ndarray], save_path: Path):
   ax.spines['right'].set_visible(False)
 
   # Customize ticks
-  plt.xticks(fontsize=14, fontweight='bold', color='0.2')
+  plt.xticks(fontsize=10, fontweight='bold', color='0.2')
   plt.xticks(rotation=45)
-  plt.yticks(fontsize=14, fontweight='bold', color='0.2')
+  plt.yticks(fontsize=10, fontweight='bold', color='0.2')
   ax.set_xticklabels([])
 
   # Add legend to the plot with a title
   legend_patches = [
-      Patch(color=color, label=label)
-      for label, color in zip(areas['Type'].unique(), sns.color_palette())
+      Patch(color=color, label=label) for label, color in palette_dict.items()
   ]
   leg = ax.legend(
-      loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=2, fancybox=True,
+      loc='center left', bbox_to_anchor=(1, 0.5), ncol=1, fancybox=True,
       shadow=True, handles=legend_patches, prop={"size": 14}
   )
+
   leg.set_frame_on(False)
+  # Sort legend
   for line in leg.get_lines():
     line.set_linewidth(3.5)
   for text in leg.get_texts():
-    text.set_text(" ".join(text.get_text().split("_")).capitalize())
+    text_parts = text.get_text().split("_")
+    if len(text_parts) > 2:
+      parts_new = []
+      for i in range(0, len(text_parts), 2):
+        parts_new.append(" ".join(text_parts[i:i + 2]))
+      text.set_text("\n".join(parts_new).capitalize())
+    else:
+      text.set_text(" ".join(text_parts).capitalize())
     text.set_weight('bold')
     text.set_color('0.2')
 
@@ -445,11 +655,10 @@ def plot_area_ratio(masks: Dict[str, np.ndarray], save_path: Path):
   ax.tick_params(axis='both', length=0)
 
   # Set labels font size to 14
-  ax.set_ylabel('Area Ratio', fontsize=14, weight='bold', color='0.2')
-
-  # Improve Aesthetics
-  plt.xlabel('')
-  plt.ylabel('Replica Area / Tissue Area')
+  ax.set_ylabel(
+      'Replica Area / Tissue Area', fontsize=16, weight='bold', color='0.2'
+  )
+  ax.set_xlabel("")
 
   # Add space between subplots and show the plot
   plt.tight_layout()
@@ -462,14 +671,31 @@ def plot_area_ratio(masks: Dict[str, np.ndarray], save_path: Path):
   plt.show()
 
 
+def get_spectras(
+    parsers: Dict[str, ImzMLParser], masks: Dict[str, np.ndarray]
+) -> pd.DataFrame:
+  spectras = {}
+  for name, p in parsers.items():
+    # Read MSI data and get the intensity matrix
+    mzs, msi = read_msi(p)
+    # Apply the mask to the MSI data
+    spectras[name] = (
+        mzs[(mzs >= 600) & (mzs <= 900)],
+        np.mean(msi[masks[name]], axis=0)[(mzs >= 600) & (mzs <= 900)]
+    )
+  return spectras
+
+
 def main():
   """Function containing main code"""
   # Define current folder using this file
   CWD = Path(os.path.dirname(os.path.abspath(__file__)))
   # Define folder that contains the revision chip type dataset
-  CHIP_TYPES_PATH = Path(os.path.join(CWD, "..", "data", "CHIP_TYPES"))
+  CHIP_TYPES_PATH = Path(os.path.join(CWD, "..", "data", "CHIP_TYPES_NEW"))
   # Define folder that contains raw data
   RAW_DATA = CHIP_TYPES_PATH.joinpath("raw")
+  # Define folder to save aligned data
+  ALIGNED_DATA = CHIP_TYPES_PATH.joinpath("aligned")
   # Define folder to save processed data
   PROCESSED_DATA = CHIP_TYPES_PATH.joinpath("processed")
   # Define file that contains dhg metadata
@@ -480,10 +706,17 @@ def main():
   MZ_END = 1200
   # Define mass resolution of the data
   MASS_RESOLUTION = 0.025
+  # Define lock mass reference peak
+  LOCK_MASS_PEAK = 885.5498
+  # Define lock mass tol
+  LOCK_MASK_TOL = 0.3
   # Define representative peaks
-  REPRESENTATIVE_PEAKS = [
-      611.5, 682.58, 736.64, 844.64, 860.63, 888.62, 600.49, 834.53
-  ]
+  representative_peaks_map = {
+      'flat_porous_substrate': [861.89, 848.89,
+                                862.85], 'porous_nNs_with_porous_substrate':
+      [600.51, 768.51, 885.55], 'porous_nNs': [794.5, 834.5, 886.6],
+      'solid_nNs': [627.53, 834.56, 886.66], 'tissue': [794.5, 834.5, 886.6]
+  }
   # Define random seed
   SEED = 42
   random.seed(SEED)
@@ -493,8 +726,25 @@ def main():
   metadata_df["sample_number"] = metadata_df.sample_file_name.apply(
       lambda s: s.split("_")[0]
   )
+  """
+  # Loop over each unique msi imzML file
+  for file_name in metadata_df.file_name.unique():
+    # Define path to msi imzML file
+    msi_path = os.path.join(RAW_DATA, f"{file_name}.imzML")
+    # Define path to new msi imzML file after alignment
+    output_path = os.path.join(ALIGNED_DATA, f"{file_name}.imzML")
+    # Align MSI
+    aligned_representation(msi_path, output_path, LOCK_MASS_PEAK, LOCK_MASK_TOL)
+  
   # Loop over each ROI in data frame
   for _, roi in metadata_df.iterrows():
+    #
+    representative_peaks = next(
+        (
+            value for key, value in representative_peaks_map.items()
+            if key in roi.sample_file_name
+        ), None
+    )
     # Define path to msi imzML file
     msi_path = os.path.join(RAW_DATA, f"{roi.file_name}.imzML")
     # Define path to new msi imzML file after processing
@@ -504,8 +754,9 @@ def main():
     # Process msi
     process(
         msi_path, output_path, roi.x_min, roi.x_max, roi.y_min, roi.y_max,
-        MZ_START, MZ_END, MASS_RESOLUTION, REPRESENTATIVE_PEAKS
+        MZ_START, MZ_END, MASS_RESOLUTION, representative_peaks
     )
+  """
   # Define path to save figures
   PLOT_PATH = Path(CWD / "chip_types/")
   # Create dirs
@@ -517,13 +768,19 @@ def main():
     name = folder.stem
     parsers[name] = ImzMLParser(folder.joinpath("meaningful_signal.imzML"))
     masks[name] = np.load(folder.joinpath("segmentation.npy"), mmap_mode='r')
+
   # Plot figures
   plot_msi_segmentation(metadata_df, masks, PLOT_PATH)
   plot_spectras_corr(PROCESSED_DATA, PLOT_PATH)
-  num_features = num_features_df(parsers, masks, np.arange(0.05, 0.55, 0.05))
+  num_features = num_features_df(parsers, masks, np.arange(1.0, 3.1, 0.2))
+  num_features.to_csv(PLOT_PATH.joinpath("num_features.csv"), index=False)
   plot_num_features_thresholds(num_features, PLOT_PATH)
-  plot_num_features(num_features, 0.3, PLOT_PATH)
+  plot_num_features(num_features, 2, PLOT_PATH)
   plot_area_ratio(masks, PLOT_PATH)
+  spectras = get_spectras(parsers, masks)
+  export_spectras_metrics(spectras, PLOT_PATH)
+  plot_spectras_best_fit_hex(spectras, PLOT_PATH, lambda x: x)
+  plot_spectras_best_fit_scatter(spectras, PLOT_PATH, lambda x: x)
 
 
 if __name__ == '__main__':
