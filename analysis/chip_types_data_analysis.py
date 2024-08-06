@@ -16,7 +16,7 @@ from scipy.signal import find_peaks
 from processing import process, aligned_representation
 from correlation import correlation_analysis
 from utils import read_msi
-from esi_data_analysis import (
+from analysis.esi_data_analysis import (
     export_spectras_metrics, plot_spectras_best_fit_hex,
     plot_spectras_best_fit_scatter
 )
@@ -710,9 +710,7 @@ def main():
   # Define current folder using this file
   CWD = Path(os.path.dirname(os.path.abspath(__file__)))
   # Define folder that contains the chip type dataset
-  CHIP_TYPES_PATH = Path(
-      os.path.join(CWD, "..", "..", "data", "CHIP_TYPES_DESI")
-  )
+  CHIP_TYPES_PATH = CWD / ".." / ".." / "data" / "CHIP_TYPES_DESI"
   # Define folder that contains raw data
   RAW_DATA = CHIP_TYPES_PATH / "raw"
   # Define folder to save aligned data
@@ -763,7 +761,7 @@ def main():
         ), None
     )
     # Define path to msi imzML file
-    msi_path = os.path.join(RAW_DATA, f"{roi.file_name}.imzML")
+    msi_path = os.path.join(ALIGNED_DATA, f"{roi.file_name}.imzML")
     # Define path to new msi imzML file after processing
     output_path = os.path.join(PROCESSED_DATA, f"{roi.sample_file_name}")
     # Create output folder if doesn't exist
