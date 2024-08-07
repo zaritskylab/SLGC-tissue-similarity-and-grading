@@ -137,7 +137,7 @@ def plot_spatial_num_features(
       dpi=1200, transparent=True
   )
   # Display the plot
-  plt.show()
+  plt.close()
 
 
 def plot_num_features(
@@ -239,7 +239,7 @@ def plot_num_features(
       dpi=1200, transparent=True
   )
   # Display the plot
-  plt.show()
+  plt.close()
 
   # Save number of features csv
   pd.DataFrame(num_features
@@ -288,9 +288,11 @@ def main():
   # Loop over each unique msi imzML file
   for file_name in metadata_df.file_name.unique():
     # Define path to msi imzML file
-    msi_path = os.path.join(RAW_DATA, f"{file_name}.imzML")
+    msi_path = RAW_DATA / f"{file_name}.imzML"
     # Define path to new msi imzML file after alignment
-    output_path = os.path.join(ALIGNED_DATA, f"{file_name}.imzML")
+    output_path = ALIGNED_DATA / f"{file_name}.imzML"
+    # Create output folder if doesn't exist
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     # Align MSI
     aligned_representation(msi_path, output_path, LOCK_MASS_PEAK, LOCK_MASK_TOL)
 
@@ -304,11 +306,11 @@ def main():
         ), None
     )
     # Define path to msi imzML file
-    msi_path = os.path.join(ALIGNED_DATA, f"{roi.file_name}.imzML")
+    msi_path = ALIGNED_DATA / f"{roi.file_name}.imzML"
     # Define path to new msi imzML file after processing
-    output_path = os.path.join(PROCESSED_DATA, f"{roi.sample_file_name}")
+    output_path = PROCESSED_DATA / f"{roi.sample_file_name}"
     # Create output folder if doesn't exist
-    Path(output_path).mkdir(parents=True, exist_ok=True)
+    output_path.mkdir(parents=True, exist_ok=True)
     # Process msi
     process(
         msi_path, output_path, roi.x_min, roi.x_max, roi.y_min, roi.y_max,
@@ -316,7 +318,7 @@ def main():
     )
 
   # Define path to save figures
-  PLOT_PATH = Path(CWD / "liver/")
+  PLOT_PATH = CWD / "liver"
   # Create dirs
   PLOT_PATH.mkdir(parents=True, exist_ok=True)
   # Create dict of msi parsers and masks

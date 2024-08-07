@@ -12,7 +12,7 @@ import os
 import itertools
 import numpy as np
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Tuple, Optional
 from scipy import stats
 from pyimzml.ImzMLParser import ImzMLParser
 from processing import ZScoreCorrection
@@ -59,13 +59,16 @@ def _correlation(
 
 
 def _get_representative_spectras(
-    processed_path: str
+    processed_path: str, mz_range: Tuple[Optional[int],
+                                         Optional[int]] = (None, None)
 ) -> Dict[str, Dict[str, Dict[str, np.ndarray]]]:
   """Function to get a representative spectra from each biopsy before and 
       after correction.
 
   Args:
       processed_path (str): Path to processed continuos imzML files.
+      mz_range (Tuple[Optional[int], Optional[int]]): mz to use for correlation.
+        Defaults to (None, None) which uses all.
   
   Returns:
       Dict[str, Dict[str, Dict[str, np.ndarray]]]: Representative spectra from
@@ -77,14 +80,8 @@ def _get_representative_spectras(
   """
   # Define dict to store all representative spectras
   representatives = {
-      "common_representation": {
-          "tissue": {},
-          "background": {}
-      },
-      "meaningful_signal": {
-          "tissue": {},
-          "background": {}
-      }
+      "common_representation": {"tissue": {}, "background": {}},
+      "meaningful_signal": {"tissue": {}, "background": {}}
   }
 
   # Loop over each folder in the processed folder
@@ -104,30 +101,44 @@ def _get_representative_spectras(
             )
         ) as reader:
           # Get full msi
-          _, img = read_msi(reader)
+          mzs, img = read_msi(reader)
           # Image correction faster than reading the meaningful_signal file
           if name == "meaningful_signal":
             img = ZScoreCorrection().correct(img, segment_image)
 
+          #
+          if mz_range != (None, None):
+            mzs_filter = (mzs >= mz_range[0]) & (mzs <= mz_range[1])
+          else:
+            mzs_filter = np.ones_like(mzs, dtype=bool)
+
           # Get tissue spectra's mean
           representatives[name]["tissue"][folder] = img[segment_image, :].mean(
               axis=0
-          )
+          )[mzs_filter]
           # Get background spectra's mean
           representatives[name]["background"][folder] = img[
-              ~segment_image, :].mean(axis=0)
+              ~segment_image, :].mean(axis=0)[mzs_filter]
   return representatives
 
 
-def correlation_analysis(processed_path: str, output_path: str) -> None:
+def correlation_analysis(
+    processed_path: str, output_path: str,
+    mz_range: Tuple[Optional[int], Optional[int]] = (None, None)
+) -> None:
   """Function to apply a correlation analysis.
 
   Args:
-      processed_path (str): Path to processed continuos imzML files. 
-      output_path (str): Path to save correlation matrices.
+    processed_path (str): Path to processed continuos imzML files. 
+    output_path (str): Path to save correlation matrices.
+    mz_range (Tuple[Optional[int], Optional[int]]): mz to use for correlation.
+        Defaults to (None, None) which uses all.
+
   """
   # Get representative spectra from each biopsy before and after correction
-  representative_spectras = _get_representative_spectras(processed_path)
+  representative_spectras = _get_representative_spectras(
+      processed_path, mz_range
+  )
 
   # Loop over before and after correction
   for image_type in representative_spectras.keys():

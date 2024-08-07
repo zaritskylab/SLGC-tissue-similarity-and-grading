@@ -279,8 +279,8 @@ def plot_msi_segmentation(
       save_path / "segmentations.png", bbox_inches='tight', dpi=1200,
       transparent=True
   )
-  # Show the plot
-  plt.show()
+  # Close the plot
+  plt.close()
 
 
 def plot_spectras_corr(processed_path: str, output_path: str) -> None:
@@ -292,7 +292,7 @@ def plot_spectras_corr(processed_path: str, output_path: str) -> None:
 
   """
   # Apply correlation analysis
-  correlation_analysis(processed_path, output_path)
+  correlation_analysis(processed_path, output_path, mz_range=(600, 900))
   # Load the correlation matrix from the file
   corr_matrix = pd.read_csv(
       output_path / 'meaningful-signal_tissue_tissue.csv', index_col=0
@@ -347,8 +347,8 @@ def plot_spectras_corr(processed_path: str, output_path: str) -> None:
       output_path / "correlations.png", bbox_inches='tight', dpi=1200,
       transparent=True
   )
-  # Show plot
-  plt.show()
+  # Close plot
+  plt.close()
 
 
 def get_sample_type(sample_file_name) -> str:
@@ -485,8 +485,8 @@ def plot_num_features_thresholds(num_features: pd.DataFrame, save_path: Path):
       save_path / "num_features_by_threshold.png", bbox_inches='tight',
       dpi=1200, transparent=True
   )
-  # Show plot
-  plt.show()
+  # Close plot
+  plt.close()
 
 
 def plot_num_features(
@@ -502,8 +502,12 @@ def plot_num_features(
     save_path (Path): Path object where the output image will be saved.
 
   """
-  # Get number of features for corresponding peak threshold
-  num_features = num_features[num_features["Peak Threshold"] == threshold]
+  # Ensure "Peak Threshold" column is of type float
+  num_features["Peak Threshold"] = num_features["Peak Threshold"].astype(float)
+  # Filter the DataFrame based on the threshold with tolerance for floating-point precision
+  tolerance = 1e-9
+  num_features = num_features[
+      np.isclose(num_features["Peak Threshold"], threshold, atol=tolerance)]
   # Plot the bars for the mean and add error bars for the SEM.
   _, ax = plt.subplots(1, 1, figsize=(8, 8))
   # create color palette
@@ -511,6 +515,7 @@ def plot_num_features(
       label: color for label, color in
       zip(num_features['Type'].unique(), sns.color_palette())
   }
+  print(palette_dict)
   # Create a bar plot using seaborn with custom error bars
   ax = sns.barplot(
       data=num_features, x="Type", y="Number of Features", hue="Type",
@@ -568,8 +573,8 @@ def plot_num_features(
       save_path / "number_of_features_bar_graph.png", bbox_inches='tight',
       dpi=1200, transparent=True
   )
-  # Display the plot
-  plt.show()
+  # Close the plot
+  plt.close()
 
 
 def plot_area_ratio(masks: Dict[str, np.ndarray], save_path: Path):
@@ -672,8 +677,8 @@ def plot_area_ratio(masks: Dict[str, np.ndarray], save_path: Path):
       save_path / "area_ratio_bar_graph.png", bbox_inches='tight', dpi=1200,
       transparent=True
   )
-  # Display the plot
-  plt.show()
+  # Close the plot
+  plt.close()
 
 
 def get_spectras(
@@ -709,7 +714,7 @@ def main():
   """Function containing main code"""
   # Define current folder using this file
   CWD = Path(os.path.dirname(os.path.abspath(__file__)))
-  # Define folder that contains the chip type dataset
+  # Define folder that contains dataset
   CHIP_TYPES_PATH = CWD / ".." / ".." / "data" / "CHIP_TYPES_DESI"
   # Define folder that contains raw data
   RAW_DATA = CHIP_TYPES_PATH / "raw"
@@ -717,7 +722,7 @@ def main():
   ALIGNED_DATA = CHIP_TYPES_PATH / "aligned"
   # Define folder to save processed data
   PROCESSED_DATA = CHIP_TYPES_PATH / "processed"
-  # Define file that contains dhg metadata
+  # Define file that contains metadata
   METADATA_PATH = CHIP_TYPES_PATH / "metadata.csv"
   # Define mass range start value
   MZ_START = 50
@@ -741,13 +746,15 @@ def main():
   metadata_df["sample_number"] = metadata_df.sample_file_name.apply(
       lambda s: s.split("_")[0]
   )
-
+  """
   # Loop over each unique msi imzML file
   for file_name in metadata_df.file_name.unique():
     # Define path to msi imzML file
-    msi_path = os.path.join(RAW_DATA, f"{file_name}.imzML")
+    msi_path = RAW_DATA / f"{file_name}.imzML"
     # Define path to new msi imzML file after alignment
-    output_path = os.path.join(ALIGNED_DATA, f"{file_name}.imzML")
+    output_path = ALIGNED_DATA / f"{file_name}.imzML"
+    # Create output folder if doesn't exist
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     # Align MSI
     aligned_representation(msi_path, output_path, LOCK_MASS_PEAK, LOCK_MASK_TOL)
 
@@ -761,19 +768,19 @@ def main():
         ), None
     )
     # Define path to msi imzML file
-    msi_path = os.path.join(ALIGNED_DATA, f"{roi.file_name}.imzML")
+    msi_path = ALIGNED_DATA / f"{roi.file_name}.imzML"
     # Define path to new msi imzML file after processing
-    output_path = os.path.join(PROCESSED_DATA, f"{roi.sample_file_name}")
+    output_path = PROCESSED_DATA / f"{roi.sample_file_name}"
     # Create output folder if doesn't exist
-    Path(output_path).mkdir(parents=True, exist_ok=True)
+    output_path.mkdir(parents=True, exist_ok=True)
     # Process msi
     process(
         msi_path, output_path, roi.x_min, roi.x_max, roi.y_min, roi.y_max,
         MZ_START, MZ_END, MASS_RESOLUTION, representative_peaks
     )
-
+  """
   # Define path to save figures
-  PLOT_PATH = Path(CWD / "chip_types/")
+  PLOT_PATH = CWD / "chip_types"
   # Create dirs
   PLOT_PATH.mkdir(parents=True, exist_ok=True)
   # Create dict of msi parsers and masks
@@ -789,8 +796,8 @@ def main():
   plot_spectras_corr(PROCESSED_DATA, PLOT_PATH)
   num_features = num_features_df(parsers, masks, np.arange(1.0, 3.1, 0.2))
   num_features.to_csv(PLOT_PATH / "num_features.csv", index=False)
-  plot_num_features_thresholds(num_features, PLOT_PATH)
-  plot_num_features(num_features, 2, PLOT_PATH)
+  plot_num_features_thresholds(num_features.copy(), PLOT_PATH)
+  plot_num_features(num_features.copy(), 2.0, PLOT_PATH)
   plot_area_ratio(masks, PLOT_PATH)
   spectras = get_spectras(parsers, masks)
   export_spectras_metrics(spectras, PLOT_PATH)
