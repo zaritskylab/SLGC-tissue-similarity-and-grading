@@ -683,7 +683,7 @@ def plot_area_ratio(masks: Dict[str, np.ndarray], save_path: Path):
 
 def get_spectras(
     parsers: Dict[str, ImzMLParser], masks: Dict[str, np.ndarray]
-) -> pd.DataFrame:
+) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
   """Get the spectras for each parser and mask.
 
   Args:
@@ -692,8 +692,8 @@ def get_spectras(
         parser.
 
   Returns:
-    pd.DataFrame: A DataFrame containing the spectras for each parser and 
-        mask.
+    Dict[str, Tuple[np.ndarray, np.ndarray]]: A dict containing the spectras 
+        for each parser and mask.
   
   """
   # Dictionary to store the spectras
@@ -741,12 +741,18 @@ def main():
       [600.51, 768.51, 885.55], 'porous_nNs': [794.5, 834.5, 886.6],
       'solid_nNs': [627.53, 834.56, 886.66], 'tissue': [794.5, 834.5, 886.6]
   }
+  representative_peaks_map = {
+      'flat_porous_substrate': [834.53, 886.62],
+      'porous_nNs_with_porous_substrate': [834.53, 886.62], 'porous_nNs':
+      [834.53, 886.62], 'solid_nNs': [834.53,
+                                      886.62], 'tissue': [834.53, 886.62]
+  }
   # Read metadata csv
   metadata_df = pd.read_csv(METADATA_PATH)
   metadata_df["sample_number"] = metadata_df.sample_file_name.apply(
       lambda s: s.split("_")[0]
   )
-  """
+
   # Loop over each unique msi imzML file
   for file_name in metadata_df.file_name.unique():
     # Define path to msi imzML file
@@ -778,7 +784,7 @@ def main():
         msi_path, output_path, roi.x_min, roi.x_max, roi.y_min, roi.y_max,
         MZ_START, MZ_END, MASS_RESOLUTION, representative_peaks
     )
-  """
+
   # Define path to save figures
   PLOT_PATH = CWD / "chip_types"
   # Create dirs

@@ -478,7 +478,8 @@ def classification_analysis(
   # this is a workaround and not best practice
   global parsers
   parsers = {
-      file_name: ImzMLParser(
+      file_name:
+      ImzMLParser(
           os.path.join(processed_path, file_name, "meaningful_signal.imzML")
       ) for file_name in metadata.sample_file_name.unique()
   }
@@ -538,15 +539,10 @@ def classification_analysis(
 
   # Create mapper from replica to section
   r_2_s = {
-      'HG 12-11-r': "HG 11-11-12-s",
-      'HG 14-13-r': "HG 14-13-s",
-      'HG 16-15-r': "HG 16-15-s",
-      'HG 18-19-18-r': "HG 19-18-s",
-      'HG 29-25-23-21-20-r': "HG 29-25-23-21-20-s",
-      'HG 6-6-7-r': "HG 6-7-s",
-      'HG 8-5-4-3-2-r': "HG 8-12-5-4-3-2-s",
-      'HG 9-10-r': "HG 9-10-s",
-      'HG 1-r': "HG 1-s"
+      'HG 12-11-r': "HG 11-11-12-s", 'HG 14-13-r': "HG 14-13-s", 'HG 16-15-r':
+      "HG 16-15-s", 'HG 18-19-18-r': "HG 19-18-s", 'HG 29-25-23-21-20-r':
+      "HG 29-25-23-21-20-s", 'HG 6-6-7-r': "HG 6-7-s", 'HG 8-5-4-3-2-r':
+      "HG 8-12-5-4-3-2-s", 'HG 9-10-r': "HG 9-10-s", 'HG 1-r': "HG 1-s"
   }
   # Create mapper from section to replica
   s_2_r = {v: k for k, v in r_2_s.items()}

@@ -138,3 +138,12 @@ DHG/raw/
 DHG/processed/
 DHG/whole_slide_annotations/
 /figures
+/old
+/new_correlation_classification
+/analysis/trianb/
+/analysis/liver/
+/analysis/esi/
+/analysis/drop_deposited_lipids/
+/analysis/chip_types/
+/new_longitudinal/
+job*.out
