@@ -8,7 +8,7 @@
 #SBATCH --mail-type=ALL			           ### conditions for sending the email
 #SBATCH --mem=128G				               ### amount of RAM memory
 #SBATCH --cpus-per-task=8			       ### number of CPU cores per task
-#SBATCH --array=3		           ### define job array with indices
+#SBATCH --array=0-4		           ### define job array with indices
 
 ### Array of Python commands
 commands=(

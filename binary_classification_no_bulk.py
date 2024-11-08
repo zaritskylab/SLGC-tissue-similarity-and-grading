@@ -76,81 +76,6 @@ def load_data(
   )
 
 
-def convert_to_bulk(
-    spectras: np.ndarray, file_names: np.ndarray, sample_file_names: np.ndarray,
-    sample_numbers: np.ndarray, sample_types: np.ndarray,
-    who_grades: np.ndarray, agg_func: str = 'mean'
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-           np.ndarray]:
-  """Function to convert the data to bulk.
-
-  Args:
-    spectras (np.ndarray): Array of data spectras.
-    file_names (np.ndarray): Array of file names.
-    sample_file_names (np.ndarray): Array of sample file names.
-    sample_numbers (np.ndarray): Array of sample numbers.
-    sample_types (np.ndarray): Array of sample types.
-    who_grades (np.ndarray): Array of WHO grades.
-    agg_func (str): Aggregation function to use ('mean', 'max', 'median', 'min').
-
-  Returns:
-    Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, 
-        np.ndarray]: A tuple containing the bulk spectras, file names, 
-        sample_file_names, sample numbers, sample types, and WHO grades.
-
-  """
-  # Mapping of aggregation functions
-  agg_functions = {
-      'mean': np.mean, 'max': np.max, 'median': np.median, 'min': np.min
-  }
-  # Check if the specified aggregation function is valid
-  if agg_func not in agg_functions:
-    raise ValueError(
-        f"Invalid aggregation function: {agg_func}. "
-        f"Choose from {list(agg_functions.keys())}"
-    )
-  # Get the aggregation function based on agg_func
-  aggregate = agg_functions[agg_func]
-  # Create grouped indices by sample_file_name
-  unique_sample_file_names = np.unique(sample_file_names)
-  grouped_indices = {
-      sample_file_name: np.where(sample_file_names == sample_file_name)[0]
-      for sample_file_name in unique_sample_file_names
-  }
-  # Define lists to store the results
-  bulk_spectras = []
-  file_names_bulk = []
-  sample_file_names_bulk = []
-  sample_numbers_bulk = []
-  sample_types_bulk = []
-  who_grades_bulk = []
-  # Iterate over each group to compute the bulk spectra and aggregate metadata
-  for sample_file_name, indices in tqdm(
-      grouped_indices.items(), desc="Converting to bulk"
-  ):
-    # Calculate the bulk of the spectra for this group
-    bulk_spectrum = aggregate(spectras[indices], axis=0)
-    # Extract metadata from the first index (as all values should be
-    # identical within the group)
-    file_name = file_names[indices[0]]
-    sample_number = sample_numbers[indices[0]]
-    sample_type = sample_types[indices[0]]
-    who_grade = who_grades[indices[0]]
-    # Append the results to the lists
-    bulk_spectras.append(bulk_spectrum)
-    file_names_bulk.append(file_name)
-    sample_file_names_bulk.append(sample_file_name)
-    sample_numbers_bulk.append(sample_number)
-    sample_types_bulk.append(sample_type)
-    who_grades_bulk.append(who_grade)
-  # Return lists as numpy arrays
-  return (
-      np.array(bulk_spectras), np.array(file_names_bulk),
-      np.array(sample_file_names_bulk), np.array(sample_numbers_bulk),
-      np.array(sample_types_bulk), np.array(who_grades_bulk)
-  )
-
-
 def separate_data_by_sample_type(
     X: np.ndarray, y: np.ndarray, batch_ids: np.ndarray,
     patient_ids: np.ndarray, sample_types: np.ndarray
@@ -245,17 +170,14 @@ def objective(
     )
   # Suggest hyperparameters using Optuna for Random Forest
   elif model_type == 'random_forest':
-    class_weight = trial.suggest_categorical(
-        'class_weight', ['balanced', 'balanced_subsample']
-    )
     n_estimators = trial.suggest_int('n_estimators', 50, 200)
     max_depth = trial.suggest_int('max_depth', 3, 7)
     max_features = trial.suggest_categorical(
         'max_features', ['sqrt', 'log2', None]
     )
     model = RandomForestClassifier(
-        class_weight=class_weight, n_estimators=n_estimators,
-        max_depth=max_depth, max_features=max_features, random_state=seed
+        n_estimators=n_estimators, max_depth=max_depth,
+        max_features=max_features, class_weight='balanced', random_state=seed
     )
   # Suggest hyperparameters using Optuna for XGBoost
   elif model_type == 'xgboost':
@@ -274,15 +196,16 @@ def objective(
   else:
     max_depth = trial.suggest_int('max_depth', 3, 7)
     learning_rate = trial.suggest_float('learning_rate', 0.01, 0.1, log=True)
-    num_leaves = trial.suggest_int('num_leaves', 30, 70)
+    num_leaves = trial.suggest_int('num_leaves', 15, 50)
     n_estimators = trial.suggest_int('n_estimators', 50, 200)
+    feature_fraction = trial.suggest_float('feature_fraction', 0.6, 1.0)
     model = LGBMClassifier(
         num_leaves=num_leaves, learning_rate=learning_rate,
-        n_estimators=n_estimators, max_depth=max_depth, class_weight='balanced',
-        random_state=seed, verbose=-1
+        feature_fraction=feature_fraction, n_estimators=n_estimators,
+        max_depth=max_depth, class_weight='balanced', random_state=seed,
+        verbose=-1
     )
   # Define cross-validation
-  # TODO: try with StratifiedKFold
   skf = StratifiedGroupKFold(n_splits=3, shuffle=False)
   # Define predictions array
   predictions = np.zeros(y_train.shape)
@@ -353,19 +276,27 @@ def create_best_model(
   """
   # Create the best model for Logistic Regression
   if model_type == 'logistic_regression':
-    best_model = LogisticRegression(**best_params, random_state=seed)
+    best_model = LogisticRegression(
+        **best_params, random_state=seed, class_weight='balanced'
+    )
   # Create the best model for Decision Tree
   elif model_type == 'decision_tree':
-    best_model = DecisionTreeClassifier(**best_params, random_state=seed)
+    best_model = DecisionTreeClassifier(
+        **best_params, random_state=seed, class_weight='balanced'
+    )
   # Create the best model for XGBoost
   elif model_type == 'xgboost':
     best_model = XGBClassifier(**best_params, random_state=seed)
   # Create the best model for Random Forest
   elif model_type == 'random_forest':
-    best_model = RandomForestClassifier(**best_params, random_state=seed)
+    best_model = RandomForestClassifier(
+        **best_params, random_state=seed, class_weight='balanced'
+    )
   # Create the best model for LightGBM
   else:
-    best_model = LGBMClassifier(**best_params, random_state=seed, verbose=-1)
+    best_model = LGBMClassifier(
+        **best_params, random_state=seed, verbose=-1, class_weight='balanced'
+    )
   return best_model
 
 
@@ -397,11 +328,14 @@ def fit_and_calibrate_model(
     best_model.fit(X_train, y_train, sample_weight=sample_weights)
   else:
     best_model.fit(X_train, y_train)
+  """
   # Calibrate the model
   calibrated_classifier = CalibratedClassifierCV(
       best_model, method='sigmoid', cv='prefit'
   )
   calibrated_classifier.fit(X_train, y_train)
+  """
+  calibrated_classifier = best_model
   # Make predictions
   return calibrated_classifier.predict_proba(X_test)[:, 1]
 
@@ -439,6 +373,9 @@ def train_and_predict_for_group(
     best_params = optimize_hyperparameters(
         X_train, y_train, batch_ids_train, model_type, seed, n_trials, n_jobs
     )
+    """
+    best_params = {}
+    """
   # Combine X_test and X_test_other for prediction
   X_test_combined = np.concatenate([X_test, X_test_other])
   # Predict for combined data
@@ -726,7 +663,7 @@ if __name__ == "__main__":
   processed_files = list(Path(PROCESSED_DATA).iterdir())
 
   # Define the output path
-  output_path = FIGURES_PATH / "classification" / args.model_type / "no_bulk"
+  output_path = FIGURES_PATH / "fixed_classification" / "no_bulk_optimized_models_no_calibration" / args.model_type
   output_path.mkdir(parents=True, exist_ok=True)
   # Run the classification with multiple seeds in parallel
   evaluation_seeds = multiple_seeds_classification_with_parallel(

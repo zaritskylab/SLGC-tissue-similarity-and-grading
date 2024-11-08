@@ -245,17 +245,14 @@ def objective(
     )
   # Suggest hyperparameters using Optuna for Random Forest
   elif model_type == 'random_forest':
-    class_weight = trial.suggest_categorical(
-        'class_weight', ['balanced', 'balanced_subsample']
-    )
     n_estimators = trial.suggest_int('n_estimators', 50, 200)
     max_depth = trial.suggest_int('max_depth', 3, 7)
     max_features = trial.suggest_categorical(
         'max_features', ['sqrt', 'log2', None]
     )
     model = RandomForestClassifier(
-        class_weight=class_weight, n_estimators=n_estimators,
-        max_depth=max_depth, max_features=max_features, random_state=seed
+        n_estimators=n_estimators, max_depth=max_depth,
+        max_features=max_features, class_weight='balanced', random_state=seed
     )
   # Suggest hyperparameters using Optuna for XGBoost
   elif model_type == 'xgboost':
@@ -274,15 +271,16 @@ def objective(
   else:
     max_depth = trial.suggest_int('max_depth', 3, 7)
     learning_rate = trial.suggest_float('learning_rate', 0.01, 0.1, log=True)
-    num_leaves = trial.suggest_int('num_leaves', 30, 70)
+    num_leaves = trial.suggest_int('num_leaves', 15, 50)
     n_estimators = trial.suggest_int('n_estimators', 50, 200)
+    feature_fraction = trial.suggest_float('feature_fraction', 0.6, 1.0)
     model = LGBMClassifier(
         num_leaves=num_leaves, learning_rate=learning_rate,
-        n_estimators=n_estimators, max_depth=max_depth, class_weight='balanced',
-        random_state=seed, verbose=-1
+        feature_fraction=feature_fraction, n_estimators=n_estimators,
+        max_depth=max_depth, class_weight='balanced', random_state=seed,
+        verbose=-1
     )
   # Define cross-validation
-  # TODO: try with StratifiedKFold
   skf = StratifiedGroupKFold(n_splits=3, shuffle=False)
   # Define predictions array
   predictions = np.zeros(y_train.shape)
@@ -353,19 +351,27 @@ def create_best_model(
   """
   # Create the best model for Logistic Regression
   if model_type == 'logistic_regression':
-    best_model = LogisticRegression(**best_params, random_state=seed)
+    best_model = LogisticRegression(
+        **best_params, random_state=seed, class_weight='balanced'
+    )
   # Create the best model for Decision Tree
   elif model_type == 'decision_tree':
-    best_model = DecisionTreeClassifier(**best_params, random_state=seed)
+    best_model = DecisionTreeClassifier(
+        **best_params, random_state=seed, class_weight='balanced'
+    )
   # Create the best model for XGBoost
   elif model_type == 'xgboost':
     best_model = XGBClassifier(**best_params, random_state=seed)
   # Create the best model for Random Forest
   elif model_type == 'random_forest':
-    best_model = RandomForestClassifier(**best_params, random_state=seed)
+    best_model = RandomForestClassifier(
+        **best_params, random_state=seed, class_weight='balanced'
+    )
   # Create the best model for LightGBM
   else:
-    best_model = LGBMClassifier(**best_params, random_state=seed, verbose=-1)
+    best_model = LGBMClassifier(
+        **best_params, random_state=seed, class_weight='balanced', verbose=-1
+    )
   return best_model
 
 
@@ -397,11 +403,14 @@ def fit_and_calibrate_model(
     best_model.fit(X_train, y_train, sample_weight=sample_weights)
   else:
     best_model.fit(X_train, y_train)
+  """
   # Calibrate the model
   calibrated_classifier = CalibratedClassifierCV(
       best_model, method='sigmoid', cv='prefit'
   )
   calibrated_classifier.fit(X_train, y_train)
+  """
+  calibrated_classifier = best_model
   # Make predictions
   return calibrated_classifier.predict_proba(X_test)[:, 1]
 
@@ -439,6 +448,9 @@ def train_and_predict_for_group(
     best_params = optimize_hyperparameters(
         X_train, y_train, batch_ids_train, model_type, seed, n_trials, n_jobs
     )
+    """
+    best_params = {}
+    """
   # Combine X_test and X_test_other for prediction
   X_test_combined = np.concatenate([X_test, X_test_other])
   # Predict for combined data
@@ -631,6 +643,7 @@ def single_seed_bulk_and_non_bulk_classification(
     json.dump(best_params_bulk_r, f)
   with open(seed_dir / "best_params_bulk_s.json", 'w') as f:
     json.dump(best_params_bulk_s, f)
+  """
   # Run non bulk classification with best parameters from bulk classification
   (
       predicted_probabilities_r, predicted_probabilities_s,
@@ -654,6 +667,7 @@ def single_seed_bulk_and_non_bulk_classification(
     json.dump(best_params_r, f)
   with open(seed_dir / "best_params_s.json", 'w') as f:
     json.dump(best_params_s, f)
+  """
 
 
 def multiple_seeds_classification_with_parallel(
@@ -781,7 +795,10 @@ if __name__ == "__main__":
   processed_files = list(Path(PROCESSED_DATA).iterdir())
 
   # Define the output path
-  output_path = FIGURES_PATH / "classification" / args.model_type / args.agg_func
+  output_path = (
+      FIGURES_PATH / "fixed_classification" /
+      "bulk_optimized_models_no_calibration" / args.model_type / args.agg_func
+  )
   output_path.mkdir(parents=True, exist_ok=True)
   # Run the classification with multiple seeds in parallel
   evaluation_seeds = multiple_seeds_classification_with_parallel(
