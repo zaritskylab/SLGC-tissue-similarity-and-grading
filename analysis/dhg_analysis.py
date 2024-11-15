@@ -10,12 +10,13 @@ import re
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import figure_customizer as fc
 from pathlib import Path
-from tqdm.notebook import tqdm
 from typing import List, Tuple, Dict
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from processing import TICNormalizer, MeanSegmentation
+from classification.binary_classification import main as binary_classification_main
 
 
 def process_spectral_data_to_image(
@@ -204,9 +205,11 @@ def plot_corr_matrix(
       corr_df, annot=annot, cmap="YlGn", fmt=".2f", vmin=-1, vmax=1,
       linewidth=.5, linecolor='w', square=True, cbar=cbar, ax=ax
   )
-  ax.set_ylabel(y_label.capitalize())
-  ax.set_xlabel(x_label.capitalize())
-
+  # Customize plot
+  fc.set_titles_and_labels(
+      ax, title="", xlabel=x_label.capitalize(), ylabel=y_label.capitalize()
+  )
+  fc.customize_ticks(ax)
   # Mark cells of biopsies from the same patient
   if mark_biopsies:
     for index_i, i in enumerate(corr_df.columns):
@@ -224,7 +227,7 @@ def plot_corr_matrix(
 
 def plot_corr_ranks(
     corr_df: pd.DataFrame, figsize: Tuple[float, float] = (11.69, 8.27)
-) -> Tuple[plt.Figure, plt.Axes]:
+) -> Tuple[plt.Figure, plt.Axes, pd.DataFrame]:
   """Function to plot correlation ranks for pair biopsies.
 
   Args:
@@ -233,30 +236,42 @@ def plot_corr_ranks(
           (11.69, 8.27).
 
   Returns:
-      Tuple[plt.Figure, plt.Axes]: Figure and axes.
+      Tuple[plt.Figure, plt.Axes]: Figure, axes and pair ranks dataframe.
   """
   # Get ranks of correlation matrix
-  ranks = corr_df.rank(axis=0, method="min", ascending=False).astype(int)
+  ranks = corr_df.rank(axis=1, method="min", ascending=False).astype(int)
   # Define list to save pair ranks
-  pair_ranks = []
+  pair_ranks = {}
   # Get ranks of pairs
-  for i in corr_df.columns:
-    for j in corr_df.index:
-      i_num = re.sub(r"HG |-s|-r|_.", "", i)
-      j_num = re.sub(r"HG |-s|-r|_.", "", j)
+  for i in corr_df.index:
+    for j in corr_df.columns:
+      i_num = re.sub(r"HG |-s|-r|_.", "", j)
+      j_num = re.sub(r"HG |-s|-r|_.", "", i)
       if i_num == j_num:
-        pair_ranks.append(ranks.loc[j, i])
+        pair_rank = pair_ranks.get(i, (None, np.inf))
+        if pair_rank[1] > ranks.loc[i, j]:
+          pair_ranks[i] = (j, ranks.loc[i, j])
+  # Create pair ranks to CSV with columns "replica" and "section"
+  pair_ranks_df = pd.DataFrame(
+      [
+          {"replica": i, "section": value[0], "corr_rank": value[1]}
+          for i, value in pair_ranks.items()
+      ]
+  )
   # Create figure
   fig, ax = plt.subplots(1, 1, figsize=figsize, tight_layout=True)
   # Plot pair correlation rank count
   ax = sns.countplot(
-      data=pd.DataFrame({"ranks": pair_ranks}), x="ranks", ax=ax,
-      color="#3274a1"
+      data=pd.DataFrame({"ranks": [i[1] for i in pair_ranks.values()]}),
+      x="ranks", ax=ax, color="#3274a1"
   )
-  ax.set_ylabel("Count")
-  ax.set_xlabel("Pairs correlation rank")
-  ax.set_ylim((0, 21))
-  return fig, ax
+  # Customize plot
+  fc.set_titles_and_labels(
+      ax, title="", xlabel="Pairs correlation rank", ylabel="Count"
+  )
+  fc.customize_spines(ax)
+  fc.customize_ticks(ax)
+  return fig, ax, pair_ranks_df
 
 
 def plot_corr_distribution(
@@ -279,17 +294,23 @@ def plot_corr_distribution(
       corr_df.values.reshape(-1), bins=np.arange(-0.05, 1.1, 0.1),
       stat="probability", ax=ax, color="#3274a1"
   )
-  ax.set_ylabel("Probability")
-  ax.set_xlabel("Correlation")
+  # Customize plot
+  fc.set_titles_and_labels(
+      ax, title="", xlabel="Correlation", ylabel="Probability"
+  )
+  fc.customize_spines(ax)
+  fc.customize_ticks(ax)
   ax.set_ylim((0, 1))
   return fig, ax
 
 
-def get_dataset_mzs(metadata_df: pd.DataFrame) -> List[Tuple[np.ndarray, str]]:
+def get_dataset_mzs(metadata_df: pd.DataFrame,
+                    processed_data: Path) -> List[Tuple[np.ndarray, str]]:
   """Function to get the mzs for all files in the dataset.
 
   Args:
     metadata_df (pd.DataFrame): The metadata dataframe.
+    processed_data (Path): The path to the processed data folder.
 
   Returns:
     List[Tuple[np.ndarray, str]]: A list of tuples containing the mzs and the
@@ -299,7 +320,7 @@ def get_dataset_mzs(metadata_df: pd.DataFrame) -> List[Tuple[np.ndarray, str]]:
   # Define list to store all mzs
   all_mzs = []
   # Go over all files
-  for p in Path(PROCESSED_DATA).iterdir():
+  for p in Path(processed_data).iterdir():
     # Get mzs
     mzs = np.load(p / "mzs.npy")
     # Append to all mzs
@@ -391,7 +412,7 @@ def normalize_and_segment_rois(
   # Get the aw files
   raw_files = list(Path(raw_data).iterdir())
   # Loop through the files
-  for p in tqdm(raw_files, total=len(raw_files)):
+  for p in raw_files:
     # Subset metadata for the current file
     l_metadata_df = metadata_df.loc[metadata_df["file_name"] == p.stem].copy()
     # Get image and mzs
@@ -432,7 +453,7 @@ def create_common_mzs_rois(
     metadata_df: pd.DataFrame, mass_res: float, processed_data: Path
 ):
   # Get the mzs for all files
-  all_mzs = get_dataset_mzs(metadata_df)
+  all_mzs = get_dataset_mzs(metadata_df, processed_data)
   # Build the mz mapping for all files to the common mzs
   mappings = build_mz_mapping(
       [np.array(mzs) for mzs, _ in all_mzs], tolerance=mass_res
@@ -440,7 +461,7 @@ def create_common_mzs_rois(
   # Get the common mzs
   common_mzs = np.array(list(mappings[0].keys()))
   # Loop through the files
-  for i, p in enumerate(tqdm(list(Path(processed_data).iterdir()))):
+  for i, p in enumerate(list(Path(processed_data).iterdir())):
     # Get mzs
     img = np.load(p / "tic_normalized.npy")
     mzs = np.load(p / "mzs.npy")
@@ -470,7 +491,7 @@ def compute_correlation_matrix(
     files: List[Path], mass_resolution: float, common_mzs: bool = False
 ):
   matrix = np.zeros((len(files), len(files)))
-  for i, p1 in tqdm(enumerate(files), total=len(files)):
+  for i, p1 in enumerate(files):
     for j, p2 in enumerate(files):
       mean_1 = load_and_segment_mean(p1, common_mzs=common_mzs)
       mean_2 = load_and_segment_mean(p2, common_mzs=common_mzs)
@@ -495,11 +516,12 @@ def subset_and_sort_corr_df(corr_df: pd.DataFrame, suffix: str):
 
 
 def plot_and_save_corr_matrices(
-    corr_dfs: pd.DataFrame, figure_path: Path, suffix: str, file_suffix: str
+    corr_dfs: pd.DataFrame, figure_path: Path, file_suffix: str
 ):
   for label, corr_df in corr_dfs.items():
     fig, ax = plot_corr_matrix(
-        corr_df, label, label if label != "Replica-Section" else "Section",
+        corr_df, label if label != "Replica-Section" else "Replica",
+        label if label != "Replica-Section" else "Section",
         mark_biopsies=label == "Replica-Section", sort_biopsies=True
     )
     plt.tight_layout()
@@ -512,7 +534,8 @@ def plot_and_save_corr_matrices(
 
 
 def plot_multiple_replicas_correlation(
-    corr_df: pd.DataFrame, figure_path: Path, suffix: str
+    corr_df: pd.DataFrame, figure_path: Path, suffix: str,
+    figsize: Tuple[float, float] = (11.69, 8.27)
 ):
   # Define the biopsies with multiple replicas
   multiple_replicas = ["HG 6_1-r", "HG 6_2-r", "HG 18_1-r", "HG 18_2-r"]
@@ -522,28 +545,29 @@ def plot_multiple_replicas_correlation(
       "tab:orange", "HG 18_2-r": "bisque"
   }
   # Create figure
-  fig, ax = plt.subplots(1)
+  fig, ax = plt.subplots(1, figsize=figsize, tight_layout=True)
   # Create scatter plot
   ax = sns.scatterplot(
       data=corr_df.T.loc[:, multiple_replicas], ax=ax, s=100,
       markers=["v", "^", "v", "^"], palette=palette
   )
-  # Set plot params
-  ax.set_ylim(-0.1, 1.1)
-  ax.tick_params('x', labelrotation=90)
-  ax.set_ylabel(f"Correlation")
-  ax.set_xlabel("")
+  # Add vertical lines for representative sections
+  for tick in ["HG 6-s", "HG 18-s"]:
+    # Get the index of the tick and plot vertical line
+    tick_pos = corr_df.columns.get_loc(tick)
+    ax.axvline(x=tick_pos, color="gray", linestyle="--", linewidth=2.5)
+  # Set the legend
   lgnd = ax.legend(
       title="", loc='upper center', bbox_to_anchor=(0.5, 1.20), ncol=2,
-      fancybox=True, shadow=True
+      fancybox=True, shadow=True, prop={'size': 14, 'weight': 'bold'}
   )
   lgnd.legend_handles[0]._sizes = [100]
   lgnd.legend_handles[1]._sizes = [100]
-  # Add vertical lines for representative sections
-  for tick in ["HG 6-s", "HG 18-s"]:
-    # Get the index of the tick in your data and plot vertical line
-    tick_pos = corr_df.columns.get_loc(tick)
-    ax.axvline(x=tick_pos, color="gray", linestyle="--", linewidth=1)
+  # Customize plot
+  fc.set_titles_and_labels(ax, title="", xlabel="", ylabel="Correlation")
+  fc.customize_ticks(ax, rotate_x_ticks=90)
+  fc.customize_spines(ax)
+  ax.set_ylim(-0.1, 1.1)
   # Show plot
   plt.tight_layout()
   plt.savefig(
@@ -553,7 +577,9 @@ def plot_multiple_replicas_correlation(
   plt.show()
 
 
-def correlation_analysis(processed_dir: Path, figure_path: Path):
+def correlation_analysis(
+    processed_dir: Path, figure_path: Path, mass_resolution: float
+):
   # Get the processed files
   processed_files = list(Path(processed_dir).iterdir())
   # Define the file suffixes
@@ -561,20 +587,34 @@ def correlation_analysis(processed_dir: Path, figure_path: Path):
   # Loop through the file suffixes
   for common_mzs, suffix in zip([False, True], file_suffixes):
     # Compute correlation matrix
-    corr_df = compute_correlation_matrix(processed_files, common_mzs=common_mzs)
+    """
+    corr_df = compute_correlation_matrix(
+        processed_files, mass_resolution=mass_resolution, common_mzs=common_mzs
+    )
     # Subset and sort for replicas and sections
     corr_df_r = subset_and_sort_corr_df(corr_df, "-r")
     corr_df_s = subset_and_sort_corr_df(corr_df, "-s")
     corr_df_rs = corr_df.loc[corr_df_r.index, corr_df_s.columns]
+    """
+    # Load the correlation matrices
+    corr_df_r = pd.read_csv(
+        figure_path / f"corr_df_r_{suffix}.csv", index_col=0
+    )
+    corr_df_s = pd.read_csv(
+        figure_path / f"corr_df_s_{suffix}.csv", index_col=0
+    )
+    corr_df_rs = pd.read_csv(
+        figure_path / f"corr_df_rs_{suffix}.csv", index_col=0
+    )
     # Plot and save all matrices
     plot_and_save_corr_matrices(
         {
             "Section": corr_df_s, "Replica": corr_df_r, "Replica-Section":
             corr_df_rs
-        }, suffix, suffix
+        }, figure_path, suffix
     )
     # Plot ranks and distribution
-    fig, ax = plot_corr_ranks(corr_df_rs)
+    fig, ax, pair_ranks_df = plot_corr_ranks(corr_df_rs)
     plt.tight_layout()
     plt.savefig(
         figure_path / f"replica_section_correlation_ranks_{suffix}.png",
@@ -589,11 +629,23 @@ def correlation_analysis(processed_dir: Path, figure_path: Path):
     )
     plt.show()
     # Plot multiple replicas correlation
-    plot_multiple_replicas_correlation(corr_df, figure_path, suffix)
+    plot_multiple_replicas_correlation(corr_df_rs, figure_path, suffix)
     # Save the correlation matrices
     corr_df_r.to_csv(figure_path / f"corr_df_r_{suffix}.csv")
     corr_df_s.to_csv(figure_path / f"corr_df_s_{suffix}.csv")
     corr_df_rs.to_csv(figure_path / f"corr_df_rs_{suffix}.csv")
+    pair_ranks_df.to_csv(
+        figure_path / f"pair_ranks_df_rs_{suffix}.csv", index=False
+    )
+
+
+def classification_analysis(
+    figure_path: Path, processed_files: List[Path], model: str,
+    n_permutations: int, n_splits: int
+):
+  binary_classification_main(
+      figure_path, processed_files, model, n_permutations, n_splits
+  )
 
 
 def main():
@@ -601,7 +653,7 @@ def main():
   # Define current folder using this file
   CWD = Path(os.path.dirname(os.path.abspath(__file__)))
   # Define folder that contains dataset
-  DHG_PATH = CWD / ".." / "data" / "DHG"
+  DHG_PATH = CWD / ".." / ".." / "data" / "DHG"
   # Define folder that contains raw data
   RAW_DATA = DHG_PATH / "raw_txt"
   # Define folder to save processed data
@@ -609,7 +661,7 @@ def main():
   # Define file that contains metadata
   METADATA_PATH = DHG_PATH / "txt_metadata.csv"
   # Define path to save plots and results
-  FIGURES_PATH = CWD / "new_correlation_classification"
+  FIGURES_PATH = CWD / "dhg"
   FIGURES_PATH.mkdir(exist_ok=True, parents=True)
   # Define mass range start value
   MZ_START = 600
@@ -621,6 +673,8 @@ def main():
   REPRESENTATIVE_PEAKS = [794.5, 834.5, 886.6]
   # Read metadata csv
   metadata_df = pd.read_csv(METADATA_PATH)
+  """
+  print("Starting processing of spectral data")
   # Normalize and segment ROIs
   normalize_and_segment_rois(
       RAW_DATA, metadata_df, MASS_RESOLUTION, REPRESENTATIVE_PEAKS,
@@ -628,8 +682,23 @@ def main():
   )
   # Create common mzs ROIs
   create_common_mzs_rois(metadata_df, MASS_RESOLUTION, PROCESSED_DATA)
+  print("Finished processing of spectral data")
+  
   # Perform correlation analysis
-  correlation_analysis(PROCESSED_DATA, FIGURES_PATH)
+  print("Starting correlation analysis")
+  correlation_analysis(
+      PROCESSED_DATA, FIGURES_PATH / "correlation", MASS_RESOLUTION
+  )
+  print("Finished correlation analysis")
+  """
+
+  # Perform binary classification
+  print("Starting classification analysis")
+  classification_analysis(
+      FIGURES_PATH / "classification", list(Path(PROCESSED_DATA).iterdir()),
+      "logistic_regression", 100, 1000
+  )
+  print("Finished classification analysis")
 
 
 if __name__ == '__main__':

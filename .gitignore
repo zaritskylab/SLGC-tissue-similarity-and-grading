@@ -145,5 +145,6 @@ DHG/whole_slide_annotations/
 /analysis/esi/
 /analysis/drop_deposited_lipids/
 /analysis/chip_types/
+/analysis/dhg/
 /new_longitudinal/
 job*.out
