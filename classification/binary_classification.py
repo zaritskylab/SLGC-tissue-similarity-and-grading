@@ -1235,7 +1235,7 @@ def plot_shap_explanations(
     ax.set_yticklabels(labels)
     # Customize the plot
     fc.set_titles_and_labels(ax, '', 'mean(|SHAP value|)', '')
-    fc.customize_ticks(ax)
+    fc.customize_ticks(ax, rotate_x_ticks=45)
     fc.customize_spines(ax)
     plt.savefig(
         figures_path / f"shap_bar_{sample_type.lower()}.png",
