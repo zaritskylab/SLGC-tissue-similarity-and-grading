@@ -1,3 +1,10 @@
+"""Longitudinal analysis script
+
+The script should be ran and will read files, process data and create
+relevant plot such as segmentations.
+
+"""
+
 import os
 import numpy as np
 import pandas as pd
@@ -142,39 +149,6 @@ def plot_segmentation(
   """
   # Define the color map
   cluster_labels_map = {"white": 1, "gray": 2, "tumour": 3}
-  """
-  # No image smoothing
-  color_map = {
-  '20240425_B4_T_0_S1(Day0S2)_Rep3_600-900_TopMax': {1: "white", 2: "gray", 3: "tumour"},
-  '20240425_B4_T_1000_S1(Day0S3)_Rep2_600-900_TopMax': {1: "tumour", 2: "white", 3: "gray"},
-  '20240510_B5_T_0_S1(Day0S1)_Rep3_600-900_TopMax': {1: "gray", 2: "white", 3: "tumour"},
-  '20240510_B5_T_1000_S2(Day0S3)_Rep3_600-900_TopMax': {1: "tumour", 2: "gray", 3: "white"},
-  '20240425_B4_T_Day0_Rep2_600-900_TopMax': {1: "gray", 2: "white", 3: "tumour"},
-  '20240521_B8_R_T_1000_S1(Day0S2)_Rep2_600-900_TopMax': {1: "white", 2: "tumour", 3: "gray"},
-  '20240514_B8_R_T_0_S1(Day0S1)_Rep3_600-900_TopMax': {1: "white", 2: "tumour", 3: "gray"},
-    '20240425_B4_T_Day0_Rep3_600-900_TopMax': {1: "white", 2: "tumour", 3: "gray"},
-    '20240510_B5_T_Day0_Rep1_600-900_TopMax': {1: "gray", 2: "tumour", 3: "white"},
-    '20240510_B5_T_Day0_Rep3_600-900_TopMax': {1: "white", 2: "gray", 3: "tumour"},
-    '20240523_B8_R_T_Day0_Rep2_600-900_TopMax': {1: "white", 2: "tumour", 3: "gray"},
-    '20240523_B8_R_T_Day0_Rep1_600-900_TopMax': {1: "tumour", 2: "white", 3: "gray"}
-  }
-
-  # Gaussian smoothing with sigma=0.5
-  color_map = {
-  '20240425_B4_T_0_S1(Day0S2)_Rep3_600-900_TopMax': {1: "white", 2: "tumour", 3: "gray"},
-  '20240425_B4_T_1000_S1(Day0S3)_Rep2_600-900_TopMax': {1: "white", 2: "tumour", 3: "gray"},
-  '20240510_B5_T_0_S1(Day0S1)_Rep3_600-900_TopMax': {1: "white", 2: "gray", 3: "tumour"},
-  '20240510_B5_T_1000_S2(Day0S3)_Rep3_600-900_TopMax': {1: "gray", 2: "white", 3: "tumour"},
-  '20240425_B4_T_Day0_Rep2_600-900_TopMax': {1: "white", 2: "gray", 3: "tumour"},
-  '20240521_B8_R_T_1000_S1(Day0S2)_Rep2_600-900_TopMax': {1: "gray", 2: "tumour", 3: "white"},
-  '20240514_B8_R_T_0_S1(Day0S1)_Rep3_600-900_TopMax': {1: "white", 2: "tumour", 3: "gray"},
-    '20240425_B4_T_Day0_Rep3_600-900_TopMax': {1: "tumour", 2: "gray", 3: "white"},
-    '20240510_B5_T_Day0_Rep1_600-900_TopMax': {1: "white", 2: "tumour", 3: "gray"},
-    '20240510_B5_T_Day0_Rep3_600-900_TopMax': {1: "gray", 2: "white", 3: "tumour"},
-    '20240523_B8_R_T_Day0_Rep2_600-900_TopMax': {1: "gray", 2: "white", 3: "tumour"},
-    '20240523_B8_R_T_Day0_Rep1_600-900_TopMax': {1: "white", 2: "gray", 3: "tumour"}
-  }
-  """
   # Define cluster labels map for gaussian smoothing with sigma=1
   color_map = {
       '20240425_B4_T_0_S1(Day0S2)_Rep3_600-900_TopMax':
@@ -211,7 +185,6 @@ def plot_segmentation(
     for cluster, color in color_map[key].items():
       color_img[seg == cluster] = cluster_labels_map[color]
     # Save the segmentation
-    plt.imshow(color_img, cmap=cmap)
     plt.tight_layout()
     plt.axis("off")
     plt.savefig(
