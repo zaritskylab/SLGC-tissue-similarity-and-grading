@@ -1317,7 +1317,6 @@ def main(
   output_path = figures_path / model_type
   output_path.mkdir(parents=True, exist_ok=True)
   # Run the classification with multiple seeds in parallel
-  """
   evaluation_seeds = multiple_seeds_classification_with_parallel(
       PRIMARY_SEED, n_iterations, model_type, processed_files, metadata_df,
       output_path, n_trials=50, n_jobs=-1
@@ -1328,7 +1327,6 @@ def main(
       PRIMARY_SEED, n_permutations, model_type, processed_files, metadata_df,
       output_path, permutation_output_path, n_jobs=-1
   )
-  """
   # Create the figures dir
   if not figures_path.exists():
     figures_path.mkdir(parents=True, exist_ok=True)
