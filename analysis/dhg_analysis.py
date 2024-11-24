@@ -191,7 +191,6 @@ def plot_corr_matrix(
   """
   # Create figure
   fig, ax = plt.subplots(1, 1, figsize=figsize, tight_layout=True)
-
   # Sort biopsies by their number
   if sort_biopsies:
     index_keys = corr_df.index.to_series(
@@ -199,7 +198,6 @@ def plot_corr_matrix(
     col_keys = corr_df.columns.to_series(
     ).apply(lambda s: int(re.sub(r"HG |-s|-r|_.", "", s))).sort_values().index
     corr_df = corr_df.loc[index_keys.to_list(), col_keys.to_list()]
-
   # Plot correlation matrix
   ax = sns.heatmap(
       corr_df, annot=annot, cmap="YlGn", fmt=".2f", vmin=-1, vmax=1,
@@ -407,6 +405,16 @@ def normalize_and_segment_rois(
     raw_data: Path, metadata_df: pd.DataFrame, mass_res: float,
     representative_peaks: List[float], processed_data: Path
 ):
+  """ Function to normalize and segment ROIs.
+
+  Args:
+      raw_data (Path): Path to the raw data.
+      metadata_df (pd.DataFrame): metadata dataframe.
+      mass_res (float): Mass resolution.
+      representative_peaks (List[float]): Representative peaks.
+      processed_data (Path): Path to save processed data.
+
+  """
   #  Get normalizer object
   normalizer = TICNormalizer()
   # Get the aw files
@@ -452,6 +460,14 @@ def normalize_and_segment_rois(
 def create_common_mzs_rois(
     metadata_df: pd.DataFrame, mass_res: float, processed_data: Path
 ):
+  """ Function to create common mzs ROIs.
+
+  Args:
+      metadata_df (pd.DataFrame): Metadata dataframe.
+      mass_res (float): Mass resolution.
+      processed_data (Path): Path to save processed data.
+
+  """
   # Get the mzs for all files
   all_mzs = get_dataset_mzs(metadata_df, processed_data)
   # Build the mz mapping for all files to the common mzs
@@ -489,41 +505,82 @@ def load_and_segment_mean(file: List[Path], common_mzs: bool = False):
 
 def compute_correlation_matrix(
     files: List[Path], mass_resolution: float, common_mzs: bool = False
-):
+) -> pd.DataFrame:
+  """Function to compute correlation matrix.
+
+  Args:
+      files (List[Path]): Files to compute correlation matrix.
+      mass_resolution (float): Mass resolution.
+      common_mzs (bool, optional): Indicator if to use common mzs. Defaults to
+          False.
+
+  Returns:
+      pd.DataFrame: Correlation matrix.
+
+  """
+  # Initialize the correlation matrix
   matrix = np.zeros((len(files), len(files)))
+  # Loop through the files
   for i, p1 in enumerate(files):
     for j, p2 in enumerate(files):
+      # Get the mean spectra
       mean_1 = load_and_segment_mean(p1, common_mzs=common_mzs)
       mean_2 = load_and_segment_mean(p2, common_mzs=common_mzs)
+      # Compute the correlation
       if common_mzs:
         correlation = np.corrcoef(mean_1, mean_2)[0, 1]
       else:
         mzs1, mzs2 = np.load(p1 / "mzs.npy"), np.load(p2 / "mzs.npy")
         correlation = pair_corr(mean_1, mean_2, mzs1, mzs2, mass_resolution)
+      # Save the correlation
       matrix[i, j] = correlation
+  # Return the correlation matrix as a DataFrame
   return pd.DataFrame(
       matrix, columns=[p.stem for p in files], index=[p.stem for p in files]
   )
 
 
-def subset_and_sort_corr_df(corr_df: pd.DataFrame, suffix: str):
+def subset_and_sort_corr_df(corr_df: pd.DataFrame, suffix: str) -> pd.DataFrame:
+  """Function to subset and sort correlation dataframe.
+
+  Args:
+      corr_df (pd.DataFrame): Correlation dataframe.
+      suffix (str): Suffix to subset and sort.
+
+  Returns:
+      pd.DataFrame: Subsetted and sorted correlation dataframe.
+
+  """
+  # Get the samples with the suffix
   samples = sorted(
       [col for col in corr_df.columns if suffix in col], key=lambda x: int(
           x.replace("HG ", "").replace("_", " ").replace("-", " ").split(' ')[0]
       )
   )
+  # Return the subsetted and sorted correlation dataframe
   return corr_df.loc[samples, samples]
 
 
 def plot_and_save_corr_matrices(
     corr_dfs: pd.DataFrame, figure_path: Path, file_suffix: str
 ):
+  """ Function to plot and save correlation matrices.
+
+  Args:
+      corr_dfs (pd.DataFrame): Correlation dataframes.
+      figure_path (Path): Path to save figures.
+      file_suffix (str):  File suffix.
+
+  """
+  # Loop through the correlation dataframes
   for label, corr_df in corr_dfs.items():
+    # Plot the correlation matrix
     fig, ax = plot_corr_matrix(
         corr_df, label if label != "Replica-Section" else "Replica",
         label if label != "Replica-Section" else "Section",
         mark_biopsies=label == "Replica-Section", sort_biopsies=True
     )
+    # Save the figure
     plt.tight_layout()
     plt.savefig(
         figure_path /
@@ -537,6 +594,15 @@ def plot_multiple_replicas_correlation(
     corr_df: pd.DataFrame, figure_path: Path, suffix: str,
     figsize: Tuple[float, float] = (11.69, 8.27)
 ):
+  """ Function to plot multiple replicas correlation.
+
+  Args:
+      corr_df (pd.DataFrame): Correlation dataframe.
+      figure_path (Path): Path to save figures.
+      suffix (str): Suffix.
+      figsize (Tuple[float, float], optional): Figure size. Defaults to
+
+  """
   # Define the biopsies with multiple replicas
   multiple_replicas = ["HG 6_1-r", "HG 6_2-r", "HG 18_1-r", "HG 18_2-r"]
   # Define the color palette
@@ -580,6 +646,14 @@ def plot_multiple_replicas_correlation(
 def correlation_analysis(
     processed_dir: Path, figure_path: Path, mass_resolution: float
 ):
+  """Function to perform correlation analysis.
+
+  Args:
+      processed_dir (Path): Path to processed data.
+      figure_path (Path): Path to save figures.
+      mass_resolution (float): Mass resolution.
+
+  """
   # Get the processed files
   processed_files = list(Path(processed_dir).iterdir())
   # Define the file suffixes
@@ -587,7 +661,6 @@ def correlation_analysis(
   # Loop through the file suffixes
   for common_mzs, suffix in zip([False, True], file_suffixes):
     # Compute correlation matrix
-    """
     corr_df = compute_correlation_matrix(
         processed_files, mass_resolution=mass_resolution, common_mzs=common_mzs
     )
@@ -595,7 +668,6 @@ def correlation_analysis(
     corr_df_r = subset_and_sort_corr_df(corr_df, "-r")
     corr_df_s = subset_and_sort_corr_df(corr_df, "-s")
     corr_df_rs = corr_df.loc[corr_df_r.index, corr_df_s.columns]
-    """
     # Load the correlation matrices
     corr_df_r = pd.read_csv(
         figure_path / f"corr_df_r_{suffix}.csv", index_col=0
@@ -641,10 +713,22 @@ def correlation_analysis(
 
 def classification_analysis(
     figure_path: Path, processed_files: List[Path], model: str,
-    n_permutations: int, n_splits: int
+    n_iterations: int, n_permutations: int
 ):
+  """Function to perform classification analysis.
+
+  Args:
+      figure_path (Path): Folder to save figures.
+      processed_files (List[Path]): List of processed files.
+      model (str): Model to use for classification.
+      n_iterations (int): Number of iterations.
+      n_permutations (int): Number of permutations.
+
+
+  """
+  # Perform binary classification
   binary_classification_main(
-      figure_path, processed_files, model, n_permutations, n_splits
+      figure_path, processed_files, model, n_iterations, n_permutations
   )
 
 
@@ -663,18 +747,13 @@ def main():
   # Define path to save plots and results
   FIGURES_PATH = CWD / "dhg"
   FIGURES_PATH.mkdir(exist_ok=True, parents=True)
-  # Define mass range start value
-  MZ_START = 600
-  # Define mass range end value
-  MZ_END = 900
   # Define mass resolution of the data
   MASS_RESOLUTION = 0.02
   # Define representative peaks
   REPRESENTATIVE_PEAKS = [794.5, 834.5, 886.6]
   # Read metadata csv
   metadata_df = pd.read_csv(METADATA_PATH)
-  """
-  print("Starting processing of spectral data")
+  print("Starting processing of spectral data...")
   # Normalize and segment ROIs
   normalize_and_segment_rois(
       RAW_DATA, metadata_df, MASS_RESOLUTION, REPRESENTATIVE_PEAKS,
@@ -683,20 +762,18 @@ def main():
   # Create common mzs ROIs
   create_common_mzs_rois(metadata_df, MASS_RESOLUTION, PROCESSED_DATA)
   print("Finished processing of spectral data")
-  
+
   # Perform correlation analysis
-  print("Starting correlation analysis")
+  print("Starting correlation analysis...")
   correlation_analysis(
       PROCESSED_DATA, FIGURES_PATH / "correlation", MASS_RESOLUTION
   )
   print("Finished correlation analysis")
-  """
-
   # Perform binary classification
-  print("Starting classification analysis")
+  print("Starting classification analysis...")
   classification_analysis(
       FIGURES_PATH / "classification", list(Path(PROCESSED_DATA).iterdir()),
-      "lightgbm", 100, 1000
+      "logistic_regression", 100, 1000
   )
   print("Finished classification analysis")
 

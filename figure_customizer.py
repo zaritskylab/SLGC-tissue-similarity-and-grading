@@ -7,8 +7,7 @@ This module should be imported and contains the following:
   * set_titles_and_labels: Sets the titles and labels for the axes.
   * customize_spines: Customizes the appearance of the subplot's spines.
   * customize_ticks: Customizes the tick marks and labels on the axes.
-  * customize_legend: Creates and customizes the legend of the plot.
-
+  
 """
 
 import matplotlib

@@ -1,4 +1,9 @@
-# Import the necessary libraries
+"""Binary Classification module.
+This module can be ran as a script to perform binary classification on the DHG
+dataset or imported as a module to use the functions. Contains the following:
+    * main - Function to run binary classification on the DHG dataset.
+
+"""
 import os
 import argparse
 import json
@@ -17,19 +22,11 @@ from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from joblib import Parallel, delayed
 from typing import List, Tuple, Dict, Any, Union
-
-# Set the font globally using the path
-from matplotlib import font_manager
-
-calibri_path = "/home/leorro/.conda/envs/tfgpu_jup/fonts/Fluent_Calibri-Bold.ttf"
-font_manager.fontManager.addfont(calibri_path)
-plt.rcParams['font.family'] = 'Fluent Calibri'
 
 
 def load_data(
@@ -165,15 +162,6 @@ def objective(
     model = LogisticRegression(
         C=C, max_iter=max_iter, tol=tol, solver=solver, random_state=seed
     )
-  # Suggest hyperparameters using Optuna for Decision Tree
-  elif model_type == 'decision_tree':
-    max_depth = trial.suggest_int('max_depth', 1, 32)
-    max_features = trial.suggest_categorical(
-        'max_features', ['sqrt', 'log2', None]
-    )
-    model = DecisionTreeClassifier(
-        max_depth=max_depth, max_features=max_features, random_state=seed
-    )
   # Suggest hyperparameters using Optuna for Random Forest
   elif model_type == 'random_forest':
     n_estimators = trial.suggest_int('n_estimators', 50, 200)
@@ -258,8 +246,8 @@ def optimize_hyperparameters(
 
 def create_best_model(
     model_type: str, best_params: Dict[str, Any], seed: int
-) -> Union[LogisticRegression, DecisionTreeClassifier, XGBClassifier,
-           RandomForestClassifier, LGBMClassifier]:
+) -> Union[LogisticRegression, XGBClassifier, RandomForestClassifier,
+           LGBMClassifier]:
   """Function to create the best model using the best hyperparameters.
 
   Args:
@@ -275,9 +263,6 @@ def create_best_model(
   # Create the best model for Logistic Regression
   if model_type == 'logistic_regression':
     best_model = LogisticRegression(**best_params, random_state=seed)
-  # Create the best model for Decision Tree
-  elif model_type == 'decision_tree':
-    best_model = DecisionTreeClassifier(**best_params, random_state=seed)
   # Create the best model for XGBoost
   elif model_type == 'xgboost':
     best_model = XGBClassifier(**best_params, random_state=seed)
@@ -683,7 +668,6 @@ def single_seed_permutation(
           )[0][0]] for s_num in sample_numbers
       ]
   )
-
   # Run classification
   single_seed_classification(
       seed=seed, spectras=spectras, file_names=file_names,
@@ -692,17 +676,15 @@ def single_seed_permutation(
       best_params_r=best_params_r, best_params_s=best_params_s,
       output_dir=output_dir
   )
-
   # Create a folder for the seed
   seed_dir = output_dir / f"seed_{seed}"
   seed_dir.mkdir(parents=True, exist_ok=True)
-
   # Save the permuted sample numbers
   np.save(
       seed_dir / "permuted_sample_numbers_who_grades.npy",
       permuted_sample_numbers_who_grades
   )
-
+  # Return the seed used for classification
   return seed
 
 
@@ -763,7 +745,6 @@ def permutation_classification_with_parallel(
           desc="Running Permutation for multiple seeds"
       )
   ]
-
   # Return the list of seeds used for reference
   return permutation_seeds
 
@@ -866,15 +847,15 @@ def plot_permutation_dist(
     permutation_auc_scores: np.ndarray, non_permuted_auc: float, ax: plt.Axes
 ) -> None:
   """
-    Plot the distribution of permutation AUC scores and save the plot.
+  Plot the distribution of permutation AUC scores and save the plot.
 
-    Args:
-      permutation_auc_scores (np.ndarray): Array of AUC scores from the 
-          permutation test.
-      non_permuted_auc (float): AUC score from the non-permuted data.
-      ax (plt.Axes): Axis to plot the permutation test histogram.
-    
-    """
+  Args:
+    permutation_auc_scores (np.ndarray): Array of AUC scores from the 
+        permutation test.
+    non_permuted_auc (float): AUC score from the non-permuted data.
+    ax (plt.Axes): Axis to plot the permutation test histogram.
+  
+  """
   # Calculate p-value
   p_value = (np.sum(permutation_auc_scores >= non_permuted_auc) +
              1) / (len(permutation_auc_scores) + 1)
@@ -890,7 +871,6 @@ def plot_permutation_dist(
     p_text = "*"
   else:
     p_text = "ns"
-
   # Plot the permutation test histogram
   ax = sns.histplot(
       permutation_auc_scores, bins=30, edgecolor='k', alpha=0.7,
@@ -902,11 +882,9 @@ def plot_permutation_dist(
       linewidth=fc.DEFAULT_LINE_WIDTH,
       label=f'True AUC ({non_permuted_auc:.3f})'
   )
-
   fc.set_titles_and_labels(ax, '', 'AUC Scores', 'Count')
   fc.customize_spines(ax)
   fc.customize_ticks(ax)
-
   # Add the legend
   l = ax.legend(
       loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=2, fancybox=True,
@@ -999,14 +977,14 @@ def plot_roc_auc(
     tprs_s.append(np.interp(fpr_range, fpr_s, tpr_s))
     group_tprs_r.append(np.interp(fpr_range, group_fpr_r, group_tpr_r))
     group_tprs_s.append(np.interp(fpr_range, group_fpr_s, group_tpr_s))
-    #
+    # Get the seed number
     seeds.append(int(seed_dir.stem.split("_")[-1]))
-
   # Calculate the mean and standard deviation of TPR values
   def calculate_mean_std(tprs, aucs):
     return np.mean(tprs, axis=0), np.std(tprs,
                                          axis=0), np.mean(aucs), np.std(aucs)
 
+  # Calculate the mean and standard deviation of TPR values
   mean_tpr_r, std_tpr_r, mean_auc_r, std_auc_r = calculate_mean_std(
       tprs_r, aucs_r
   )
@@ -1019,18 +997,17 @@ def plot_roc_auc(
   mean_group_tpr_s, std_group_tpr_s, mean_group_auc_s, std_group_auc_s = calculate_mean_std(
       group_tprs_s, group_aucs_s
   )
-
+  # Define the plot text
   if not cross_pred:
     plot_text_r = 'Replica'
     plot_text_s = 'Section'
-
   else:
     plot_text_r = 'Section-Replica'
     plot_text_s = 'Replica-Section'
-
+  # Store the TPR values and AUC scores in dataframes
   tprs_r_df, tprs_s_df = None, None
   aucs_r_df, aucs_s_df = None, None
-
+  # Plot the mean ROC curve with shaded standard deviation area
   if not agg:
     # Plot the mean ROC curve with shaded standard deviation area for non aggregated data
     ax.plot(
@@ -1056,22 +1033,22 @@ def plot_roc_auc(
   else:
     # Plot the mean ROC curve with shaded standard deviation area for aggregated data
     ax.plot(
-        fpr_range, mean_group_tpr_r, color='darkorange',
-        lw=fc.DEFAULT_LINE_WIDTH, label=
+        fpr_range, mean_group_tpr_r, color='#F94040', lw=fc.DEFAULT_LINE_WIDTH,
+        label=
         f'{plot_text_r} (AUC = {mean_group_auc_r:.2f} $\pm$ {std_group_auc_r:.2f})'
     )
     ax.fill_between(
         fpr_range, mean_group_tpr_r - std_group_tpr_r,
-        mean_group_tpr_r + std_group_tpr_r, color='tab:orange', alpha=0.2
+        mean_group_tpr_r + std_group_tpr_r, color='#F94040', alpha=0.25
     )
     ax.plot(
-        fpr_range, mean_group_tpr_s, color='blue', lw=fc.DEFAULT_LINE_WIDTH,
+        fpr_range, mean_group_tpr_s, color='#5757F9', lw=fc.DEFAULT_LINE_WIDTH,
         label=
         f'{plot_text_s} (AUC = {mean_group_auc_s:.2f} $\pm$ {std_group_auc_s:.2f})'
     )
     ax.fill_between(
         fpr_range, mean_group_tpr_s - std_group_tpr_s,
-        mean_group_tpr_s + std_group_tpr_s, color='tab:blue', alpha=0.2
+        mean_group_tpr_s + std_group_tpr_s, color='#5757F9', alpha=0.25
     )
     tprs_r_df = pd.DataFrame(group_tprs_r, index=fpr_range, columns=seeds)
     tprs_s_df = pd.DataFrame(group_tprs_s, index=fpr_range, columns=seeds)
@@ -1088,16 +1065,14 @@ def plot_roc_auc(
   ax.set_ylim([-0.01, 1.01])
   # Set the aspect ratio
   ax.set_aspect('equal', adjustable='box')
-  # Customize th plot
+  # Customize the plot
   fc.set_titles_and_labels(ax, '', 'FPR', 'TPR')
   fc.customize_spines(ax, linewidth=3.5)
-  fc.customize_ticks(ax, )
-  #
+  fc.customize_ticks(ax)
   ax.tick_params(axis='both', length=10, width=3.5)
   # Add the legend
   l = ax.legend(
-      loc='lower right',
-      prop={"size": 10, 'weight': fc.DEFAULT_FONT_WEIGHT}
+      loc='lower right', prop={"size": 10, 'weight': fc.DEFAULT_FONT_WEIGHT}
   )
   for text in l.get_texts():
     text.set_color(fc.DEFAULT_COLOR)
@@ -1109,12 +1084,10 @@ def perform_loocv_shap(
     patient_ids: np.ndarray, model_type: str, seed: int,
     best_params_list: List[Dict[str, Any]] = None
 ) -> None:
-  #
+  # Initialize the SHAP values
   shap_values_all = np.zeros((X.shape))
-
   # Prepare grouped indices for LOOCV
   grouped_indices = prepare_grouped_indices(batch_ids)
-
   # Loop over each group for training and testing
   for idx, (_, test_idx) in tqdm(
       enumerate(grouped_indices.items()), total=len(grouped_indices),
@@ -1124,29 +1097,22 @@ def perform_loocv_shap(
     train_idx = ~np.isin(patient_ids, patient_ids[test_idx])
     # Get the best parameters if provided, otherwise train and optimize
     best_params = best_params_list[idx] if best_params_list else None
-
     # Create and fit the model using the best parameters
     best_model = create_best_model(model_type, best_params, seed)
     best_model.fit(X[train_idx], y[train_idx])
-
     # Use SHAP to explain the prediction for the left-out sample
     if isinstance(
-        best_model, (
-            DecisionTreeClassifier, RandomForestClassifier, XGBClassifier,
-            LGBMClassifier
-        )
+        best_model, (RandomForestClassifier, XGBClassifier, LGBMClassifier)
     ):
       explainer = shap.TreeExplainer(best_model, X[train_idx])
     else:
       explainer = shap.Explainer(best_model, X[train_idx])
     shap_values = explainer(X[test_idx])
-
     if shap_values.values.ndim == 3:  # Multiclass case
       # Example: Using SHAP values for the first class
       shap_values_all[test_idx, :] = shap_values.values[:, :, 1]
     else:
       shap_values_all[test_idx, :] = shap_values.values
-
     return shap_values_all
 
 
@@ -1232,7 +1198,6 @@ def plot_shap_explanations(
     )
     # Retrieve the current figure
     fig, ax = plt.gcf(), plt.gca()
-
     # Set the figure size
     fig.set_size_inches(3, 9)
     # Get current y-axis labels
@@ -1265,7 +1230,6 @@ def plot_and_save_figures(
   ) = load_data(processed_files, metadata_df)
   # Define the paths
   model_output_dir = figures_path / model_type
-  """
   permutation_output_path = figures_path / "permutation" / model_type
   # Get best auc from the best seed
   best_auc_r, best_auc_s, best_auc_rs, best_auc_sr = get_auc_from_best_seed(
@@ -1286,11 +1250,10 @@ def plot_and_save_figures(
     plt.tight_layout()
     plt.savefig(
         figures_path / f"permutation_test_{sample_type}.png",
-        bbox_inches='tight', dpi=1200, transparent=True 
+        bbox_inches='tight', dpi=1200, transparent=True
     )
     plt.show()
     plt.close()
-  """
   # Plot the roc auc
   fig, ax = plt.subplots(1, figsize=(5.845 * 1.25, 4.135 * 1.25))
   ax, tprs_r_df, tprs_s_df, aucs_r_df, aucs_s_df = plot_roc_auc(
@@ -1308,7 +1271,7 @@ def plot_and_save_figures(
   plt.show()
   plt.close()
   # Plot the cross modality roc auc
-  fig, ax = plt.subplots(1, figsize=(5.845 * 1.25, 4.135 * 1.25) )
+  fig, ax = plt.subplots(1, figsize=(5.845 * 1.25, 4.135 * 1.25))
   ax, tprs_sr_df, tprs_rs_df, aucs_sr_df, aucs_rs_df = plot_roc_auc(
       model_output_dir, who_grades[sample_types == "replica"],
       who_grades[sample_types == "section"],
@@ -1323,22 +1286,18 @@ def plot_and_save_figures(
   )
   plt.show()
   plt.close()
-  """
   # Plot the SHAP explanations
   plot_shap_explanations(
       spectras, who_grades, file_names, sample_numbers, sample_types,
       model_type, processed_files, figures_path
   )
-  """
   # Save the data to create the figures
-  """
   pd.DataFrame({'AUC': permutation_aucs_r}).to_csv(
       figures_path / f"permutation_aucs_r_best_real_auc_{best_auc_r:.4f}.csv"
   )
   pd.DataFrame({'AUC': permutation_aucs_s}).to_csv(
       figures_path / f"permutation_aucs_s_best_real_auc_{best_auc_s:.4f}.csv"
   )
-  """
   tprs_r_df.to_csv(figures_path / "tprs_r_df.csv")
   tprs_s_df.to_csv(figures_path / "tprs_s_df.csv")
   aucs_r_df.to_csv(figures_path / "aucs_r_df.csv")
@@ -1353,11 +1312,12 @@ def main(
     figures_path: Path, processed_files: List[Path], model_type: str,
     n_iterations: int, n_permutations: int
 ):
+  """Function containing main code"""
   # Define the output path
   output_path = figures_path / model_type
   output_path.mkdir(parents=True, exist_ok=True)
-  """
   # Run the classification with multiple seeds in parallel
+  """
   evaluation_seeds = multiple_seeds_classification_with_parallel(
       PRIMARY_SEED, n_iterations, model_type, processed_files, metadata_df,
       output_path, n_trials=50, n_jobs=-1
@@ -1369,6 +1329,7 @@ def main(
       output_path, permutation_output_path, n_jobs=-1
   )
   """
+  # Create the figures dir
   if not figures_path.exists():
     figures_path.mkdir(parents=True, exist_ok=True)
   # Plot and save the figures
@@ -1404,20 +1365,17 @@ if __name__ == "__main__":
       help="Number of permutations for the analysis"
   )
   parser.add_argument(
-      '--model_type', type=str, choices=[
-          'logistic_regression', 'decision_tree', 'random_forest', 'lightgbm',
-          'xgboost'
-      ], default='lightgbm', help=(
-          "Type of model to use (e.g., 'logistic', 'decision_tree',"
-          "'random_forest', 'lightgbm' or 'xgboost')"
-      )
+      '--model_type', type=str,
+      choices=['logistic_regression', 'random_forest', 'lightgbm',
+               'xgboost'], default='lightgbm', help=(
+                   "Type of model to use (e.g., 'logistic',"
+                   "'random_forest', 'lightgbm' or 'xgboost')"
+               )
   )
   args = parser.parse_args()
-
   # Get the processed files
   processed_files = list(Path(PROCESSED_DATA).iterdir())
-
-  #
+  # Run the main function
   main(
       FIGURES_PATH, processed_files, args.model_type, args.n_iterations,
       args.n_permutations

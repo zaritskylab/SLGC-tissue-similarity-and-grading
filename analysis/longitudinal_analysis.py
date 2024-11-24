@@ -16,11 +16,11 @@ from skimage.morphology import disk
 from sklearn.cluster import AgglomerativeClustering
 from matplotlib import pyplot as plt
 from matplotlib.colors import ListedColormap
+from typing import List, Tuple
 from processing import TICNormalizer
 from analysis.dhg_analysis import (
     process_spectral_data_to_image, merge_mzs_and_intensities
 )
-from typing import List, Tuple
 
 
 def get_image_and_segmentation(
@@ -185,6 +185,7 @@ def plot_segmentation(
     for cluster, color in color_map[key].items():
       color_img[seg == cluster] = cluster_labels_map[color]
     # Save the segmentation
+    plt.imshow(color_img, cmap=cmap)
     plt.tight_layout()
     plt.axis("off")
     plt.savefig(
@@ -212,12 +213,15 @@ def main():
   # Get the aw files
   raw_files = list(Path(RAW_DATA).iterdir())
   # Get the images and segmentations
+  print("Getting images and segmentations...")
   imgs, tissue_segs = get_image_and_segmentation(
       raw_files, normalizer, MASS_RESOLUTION
   )
   # Apply clustering
+  print("Applying clustering...")
   segmentations = apply_clustering(imgs, tissue_segs)
   # Plot the segmentations
+  print("Plotting segmentations...")
   plot_segmentation(FIGURES_PATH, segmentations)
 
 
