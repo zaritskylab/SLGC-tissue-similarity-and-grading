@@ -696,7 +696,7 @@ def main():
   print("Starting classification analysis")
   classification_analysis(
       FIGURES_PATH / "classification", list(Path(PROCESSED_DATA).iterdir()),
-      "logistic_regression", 100, 1000
+      "lightgbm", 100, 1000
   )
   print("Finished classification analysis")
 

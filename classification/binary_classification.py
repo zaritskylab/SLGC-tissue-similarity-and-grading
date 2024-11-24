@@ -24,6 +24,13 @@ from lightgbm import LGBMClassifier
 from joblib import Parallel, delayed
 from typing import List, Tuple, Dict, Any, Union
 
+# Set the font globally using the path
+from matplotlib import font_manager
+
+calibri_path = "/home/leorro/.conda/envs/tfgpu_jup/fonts/Fluent_Calibri-Bold.ttf"
+font_manager.fontManager.addfont(calibri_path)
+plt.rcParams['font.family'] = 'Fluent Calibri'
+
 
 def load_data(
     processed_files: List[Path], metadata_df: pd.DataFrame
@@ -1027,20 +1034,20 @@ def plot_roc_auc(
   if not agg:
     # Plot the mean ROC curve with shaded standard deviation area for non aggregated data
     ax.plot(
-        fpr_range, mean_tpr_r, color='darkorange', lw=fc.DEFAULT_LINE_WIDTH,
+        fpr_range, mean_tpr_r, color='#F94040', lw=fc.DEFAULT_LINE_WIDTH,
         label=f'{plot_text_r} (AUC = {mean_auc_r:.2f} $\pm$ {std_auc_r:.2f})'
     )
     ax.fill_between(
         fpr_range, mean_tpr_r - std_tpr_r, mean_tpr_r + std_tpr_r,
-        color='tab:orange', alpha=0.2
+        color='#F94040', alpha=0.25
     )
     ax.plot(
-        fpr_range, mean_tpr_s, color='blue', lw=fc.DEFAULT_LINE_WIDTH,
+        fpr_range, mean_tpr_s, color='#5757F9', lw=fc.DEFAULT_LINE_WIDTH,
         label=f'{plot_text_s} (AUC = {mean_auc_s:.2f} $\pm$ {std_auc_s:.2f})'
     )
     ax.fill_between(
         fpr_range, mean_tpr_s - std_tpr_s, mean_tpr_s + std_tpr_s,
-        color='tab:blue', alpha=0.2
+        color='#5757F9', alpha=0.25
     )
     tprs_r_df = pd.DataFrame(tprs_r, index=fpr_range, columns=seeds)
     tprs_s_df = pd.DataFrame(tprs_s, index=fpr_range, columns=seeds)
@@ -1083,12 +1090,14 @@ def plot_roc_auc(
   ax.set_aspect('equal', adjustable='box')
   # Customize th plot
   fc.set_titles_and_labels(ax, '', 'FPR', 'TPR')
-  fc.customize_spines(ax)
-  fc.customize_ticks(ax)
+  fc.customize_spines(ax, linewidth=3.5)
+  fc.customize_ticks(ax, )
+  #
+  ax.tick_params(axis='both', length=10, width=3.5)
   # Add the legend
   l = ax.legend(
       loc='lower right',
-      prop={"size": fc.DEFAULT_FONT_SIZE, 'weight': fc.DEFAULT_FONT_WEIGHT}
+      prop={"size": 10, 'weight': fc.DEFAULT_FONT_WEIGHT}
   )
   for text in l.get_texts():
     text.set_color(fc.DEFAULT_COLOR)
@@ -1256,6 +1265,7 @@ def plot_and_save_figures(
   ) = load_data(processed_files, metadata_df)
   # Define the paths
   model_output_dir = figures_path / model_type
+  """
   permutation_output_path = figures_path / "permutation" / model_type
   # Get best auc from the best seed
   best_auc_r, best_auc_s, best_auc_rs, best_auc_sr = get_auc_from_best_seed(
@@ -1280,8 +1290,9 @@ def plot_and_save_figures(
     )
     plt.show()
     plt.close()
+  """
   # Plot the roc auc
-  fig, ax = plt.subplots(1, figsize=(11.69, 8.27))
+  fig, ax = plt.subplots(1, figsize=(5.845 * 1.25, 4.135 * 1.25))
   ax, tprs_r_df, tprs_s_df, aucs_r_df, aucs_s_df = plot_roc_auc(
       model_output_dir, who_grades[sample_types == "replica"],
       who_grades[sample_types == "section"],
@@ -1291,13 +1302,14 @@ def plot_and_save_figures(
   )
   plt.tight_layout()
   plt.savefig(
-      figures_path / "roc_auc_spectra_wise.png", bbox_inches='tight', dpi=1200, transparent=True
+      figures_path / "roc_auc_spectra_wise.png", bbox_inches='tight', dpi=1200,
+      transparent=True
   )
   plt.show()
   plt.close()
   # Plot the cross modality roc auc
-  fig, ax = plt.subplots(1, figsize=(11.69, 8.27))
-  ax, tprs_rs_df, tprs_sr_df, aucs_rs_df, aucs_sr_df = plot_roc_auc(
+  fig, ax = plt.subplots(1, figsize=(5.845 * 1.25, 4.135 * 1.25) )
+  ax, tprs_sr_df, tprs_rs_df, aucs_sr_df, aucs_rs_df = plot_roc_auc(
       model_output_dir, who_grades[sample_types == "replica"],
       who_grades[sample_types == "section"],
       sample_file_names[sample_types == "replica"],
@@ -1311,18 +1323,22 @@ def plot_and_save_figures(
   )
   plt.show()
   plt.close()
+  """
   # Plot the SHAP explanations
   plot_shap_explanations(
       spectras, who_grades, file_names, sample_numbers, sample_types,
       model_type, processed_files, figures_path
   )
+  """
   # Save the data to create the figures
+  """
   pd.DataFrame({'AUC': permutation_aucs_r}).to_csv(
       figures_path / f"permutation_aucs_r_best_real_auc_{best_auc_r:.4f}.csv"
   )
   pd.DataFrame({'AUC': permutation_aucs_s}).to_csv(
       figures_path / f"permutation_aucs_s_best_real_auc_{best_auc_s:.4f}.csv"
   )
+  """
   tprs_r_df.to_csv(figures_path / "tprs_r_df.csv")
   tprs_s_df.to_csv(figures_path / "tprs_s_df.csv")
   aucs_r_df.to_csv(figures_path / "aucs_r_df.csv")
@@ -1353,6 +1369,8 @@ def main(
       output_path, permutation_output_path, n_jobs=-1
   )
   """
+  if not figures_path.exists():
+    figures_path.mkdir(parents=True, exist_ok=True)
   # Plot and save the figures
   plot_and_save_figures(metadata_df, figures_path, processed_files, model_type)
 

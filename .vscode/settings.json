@@ -9,7 +9,7 @@
     "editor.defaultFormatter": "eeyore.yapf",
   },
   "notebook.formatOnCellExecution": false,
-  "notebook.formatOnSave.enabled": true,
+  "notebook.formatOnSave.enabled": false,
   "python.formatting.provider": "none",
   "yapf.args": [
     "--style",

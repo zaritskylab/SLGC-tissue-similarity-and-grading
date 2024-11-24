@@ -2,6 +2,10 @@
 This module should be imported and contains the following:
     
     * read_msi - Function to read a continuos msi.
+    * get_mean_spectra - Function to calculate mean spectra of processed imzML 
+          parser.
+    * get_mean_spectra_old - Old function to calculate mean spectra of processed
+          imzML parser.
 
 """
 import numpy as np
@@ -38,6 +42,7 @@ def read_msi(p: ImzMLParser) -> Tuple[np.ndarray, np.ndarray]:
     msi[y - 1, x - 1, :] = ints
   return mzs, msi
 
+
 def get_mean_spectra(p):
   """
   Function to calculate mean spectra of processed imzML parser 
@@ -54,27 +59,23 @@ def get_mean_spectra(p):
   # Initialize a list to store all spectra
   all_mzs = []
   all_intensities = []
-  
   # Iterate over all spectra in the file
   for idx, _ in enumerate(p.coordinates):
-      mzs, intensities = p.getspectrum(idx)
-      all_mzs.append(mzs)
-      all_intensities.append(intensities)
-      
+    mzs, intensities = p.getspectrum(idx)
+    all_mzs.append(mzs)
+    all_intensities.append(intensities)
   # Convert lists to numpy arrays
   all_mzs = np.concatenate(all_mzs)
   all_intensities = np.concatenate(all_intensities)
-  
   # Find unique m/z values and their indices in the original array
   unique_mzs, indices = np.unique(all_mzs, return_inverse=True)
-  
   # Accumulate intensities at each unique m/z
   summed_intensities = np.bincount(indices, weights=all_intensities)
-  
   # Calculate the mean by dividing by the number of spectra
   mean_intensities = summed_intensities / len(p.coordinates)
-  
+  # Return the unique m/z values and the mean intensities
   return unique_mzs, mean_intensities
+
 
 def get_mean_spectra_old(p: ImzMLParser):
   """
@@ -92,19 +93,18 @@ def get_mean_spectra_old(p: ImzMLParser):
   # Initialize a dictionary to store the sum of all spectra
   sum_spectra = {}
   count = 0
-      
   # Iterate over all spectra in the file
-  for idx, (x,y,z) in enumerate(p.coordinates):
+  for idx, (x, y, z) in enumerate(p.coordinates):
     mzs, intensities = p.getspectrum(idx)
     # Aggregate spectra by adding intensities at each m/z
     for m, i in zip(mzs, intensities):
       if m in sum_spectra:
-          sum_spectra[m] += i
+        sum_spectra[m] += i
       else:
-          sum_spectra[m] = i
+        sum_spectra[m] = i
     count += 1
   # Calculate the mean spectrum
   mean_spectrum = {m: i / count for m, i in sum_spectra.items()}
   # Convert the mean spectrum to sorted lists of m/z and intensities
   mzs, intensities = zip(*sorted(mean_spectrum.items()))
-  return np.asarray(mzs),  np.asarray(intensities)
+  return np.asarray(mzs), np.asarray(intensities)
