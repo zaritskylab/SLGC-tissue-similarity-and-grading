@@ -1026,8 +1026,8 @@ def plot_roc_auc(
         fpr_range, mean_tpr_s - std_tpr_s, mean_tpr_s + std_tpr_s,
         color='#5757F9', alpha=0.25
     )
-    tprs_r_df = pd.DataFrame(tprs_r, index=fpr_range, columns=seeds)
-    tprs_s_df = pd.DataFrame(tprs_s, index=fpr_range, columns=seeds)
+    tprs_r_df = pd.DataFrame(tprs_r, index=seeds, columns=fpr_range)
+    tprs_s_df = pd.DataFrame(tprs_s, index=seeds, columns=fpr_range)
     aucs_r_df = pd.DataFrame({'AUC': aucs_r}, index=seeds)
     aucs_s_df = pd.DataFrame({'AUC': aucs_s}, index=seeds)
   else:
