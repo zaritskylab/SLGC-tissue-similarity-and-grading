@@ -16,7 +16,7 @@ import pandas as pd
 import seaborn as sns
 import figure_customizer as fc
 from pathlib import Path
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from matplotlib import pyplot as plt
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.model_selection import StratifiedGroupKFold

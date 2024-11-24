@@ -654,6 +654,9 @@ def correlation_analysis(
       mass_resolution (float): Mass resolution.
 
   """
+  # Make the figure path if it doesn't exist
+  if not figure_path.exists():
+    figure_path.mkdir(parents=True, exist_ok=True)
   # Get the processed files
   processed_files = list(Path(processed_dir).iterdir())
   # Define the file suffixes
@@ -669,6 +672,7 @@ def correlation_analysis(
     corr_df_s = subset_and_sort_corr_df(corr_df, "-s")
     corr_df_rs = corr_df.loc[corr_df_r.index, corr_df_s.columns]
     # Load the correlation matrices
+    """
     corr_df_r = pd.read_csv(
         figure_path / f"corr_df_r_{suffix}.csv", index_col=0
     )
@@ -678,6 +682,7 @@ def correlation_analysis(
     corr_df_rs = pd.read_csv(
         figure_path / f"corr_df_rs_{suffix}.csv", index_col=0
     )
+    """
     # Plot and save all matrices
     plot_and_save_corr_matrices(
         {
