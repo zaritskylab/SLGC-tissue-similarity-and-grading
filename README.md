@@ -1,6 +1,6 @@
 ![NANOBIOPSY logo](./logo.png)
 
-# Nondestructive Spatial Lipidomics for Glioma Classification - Tissue Similarity and Grading
+# Nanoneedles Enable Spatiotemporal Lipidomics for Glioma Profiling
 Davide Alessandro Martella<sup>1</sup>, Leor Ariel Rose<sup>2</sup>, Nadia Rouatbi<sup>3</sup>, Chenlei Gu<sup>1</sup>, Valeria Caprettini<sup>1</sup>, Magnus Jensen<sup>1</sup>, Cathleen Hagemann<sup>1,4</sup>, Andrea Serio<sup>1,4</sup>, Khuloud Al-Jamal<sup>3</sup>, Mads Bergholt<sup>1</sup>, Paul Brennan<sup>5</sup>, Assaf Zaritsky<sup>2</sup>, Ciro Chiappini<sup>1,6</sup>
 
 1. Centre for Craniofacial and Regenerative Biology, King’s College London, SE1 9RT, London, UK.
