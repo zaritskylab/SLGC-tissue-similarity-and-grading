@@ -16,7 +16,7 @@ import pandas as pd
 import seaborn as sns
 import figure_customizer as fc
 from pathlib import Path
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from matplotlib import pyplot as plt
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.model_selection import StratifiedGroupKFold
@@ -1026,8 +1026,8 @@ def plot_roc_auc(
         fpr_range, mean_tpr_s - std_tpr_s, mean_tpr_s + std_tpr_s,
         color='#5757F9', alpha=0.25
     )
-    tprs_r_df = pd.DataFrame(tprs_r, index=fpr_range, columns=seeds)
-    tprs_s_df = pd.DataFrame(tprs_s, index=fpr_range, columns=seeds)
+    tprs_r_df = pd.DataFrame(tprs_r, index=seeds, columns=fpr_range)
+    tprs_s_df = pd.DataFrame(tprs_s, index=seeds, columns=fpr_range)
     aucs_r_df = pd.DataFrame({'AUC': aucs_r}, index=seeds)
     aucs_s_df = pd.DataFrame({'AUC': aucs_s}, index=seeds)
   else:
@@ -1317,7 +1317,6 @@ def main(
   output_path = figures_path / model_type
   output_path.mkdir(parents=True, exist_ok=True)
   # Run the classification with multiple seeds in parallel
-  """
   evaluation_seeds = multiple_seeds_classification_with_parallel(
       PRIMARY_SEED, n_iterations, model_type, processed_files, metadata_df,
       output_path, n_trials=50, n_jobs=-1
@@ -1328,7 +1327,6 @@ def main(
       PRIMARY_SEED, n_permutations, model_type, processed_files, metadata_df,
       output_path, permutation_output_path, n_jobs=-1
   )
-  """
   # Create the figures dir
   if not figures_path.exists():
     figures_path.mkdir(parents=True, exist_ok=True)
