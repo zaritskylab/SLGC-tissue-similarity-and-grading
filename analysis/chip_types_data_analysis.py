@@ -715,7 +715,7 @@ def main():
   # Define current folder using this file
   CWD = Path(os.path.dirname(os.path.abspath(__file__)))
   # Define folder that contains dataset
-  CHIP_TYPES_PATH = CWD / ".." / ".." / "data" / "CHIP_TYPES_DESI"
+  CHIP_TYPES_PATH = CWD / ".." / ".." / "data" / "CHIP_TYPES"
   # Define folder that contains raw data
   RAW_DATA = CHIP_TYPES_PATH / "raw"
   # Define folder to save aligned data
