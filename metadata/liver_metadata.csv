@@ -1,0 +1,7 @@
+file_name,sample_file_name,sample_type,x_min,y_min,x_max,y_max
+220224-optimization-liver-optimised-1 Analyte 1_1,liver_opt_1,replica,1,1,69,42
+220224-optimization-liver-optimised-1 Analyte 1_1,liver_opt_2,replica,70,1,145,42
+220224-optimization-liver-optimised-1 Analyte 1_1,liver_opt_3,replica,146,1,249,42
+220224-optimization-liver-standard-1 Analyte 1_1,liver_std_1,replica,1,1,75,42
+220224-optimization-liver-standard-1 Analyte 1_1,liver_std_2,replica,76,1,154,42
+220224-optimization-liver-standard-1 Analyte 1_1,liver_std_3,replica,155,1,249,42
