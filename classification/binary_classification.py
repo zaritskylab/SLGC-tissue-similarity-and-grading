@@ -1188,7 +1188,6 @@ def plot_shap_explanations(
         figures_path / f"shap_beeswarm_{sample_type.lower()}.png",
         bbox_inches='tight', dpi=1200, transparent=True
     )
-    plt.show()
     plt.close()
     # Plot the SHAP bar plot
     shap.plots.bar(
@@ -1216,7 +1215,6 @@ def plot_shap_explanations(
         bbox_inches='tight', dpi=1200, transparent=True
     )
     plt.close()
-    plt.show()
 
 
 def plot_and_save_figures(
@@ -1252,7 +1250,6 @@ def plot_and_save_figures(
         figures_path / f"permutation_test_{sample_type}.png",
         bbox_inches='tight', dpi=1200, transparent=True
     )
-    plt.show()
     plt.close()
   # Plot the roc auc
   fig, ax = plt.subplots(1, figsize=(5.845 * 1.25, 4.135 * 1.25))
@@ -1268,7 +1265,6 @@ def plot_and_save_figures(
       figures_path / "roc_auc_spectra_wise.png", bbox_inches='tight', dpi=1200,
       transparent=True
   )
-  plt.show()
   plt.close()
   # Plot the cross modality roc auc
   fig, ax = plt.subplots(1, figsize=(5.845 * 1.25, 4.135 * 1.25))
@@ -1284,7 +1280,6 @@ def plot_and_save_figures(
       figures_path / "roc_auc_spectra_wise_cross_modality.png",
       bbox_inches='tight', dpi=1200, transparent=True
   )
-  plt.show()
   plt.close()
   # Plot the SHAP explanations
   plot_shap_explanations(

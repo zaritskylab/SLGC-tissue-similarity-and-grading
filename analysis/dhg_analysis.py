@@ -587,7 +587,7 @@ def plot_and_save_corr_matrices(
         f"{label.lower().replace('-', '_')}_correlation_heatmap_{file_suffix}.png",
         transparent=True, bbox_inches='tight', dpi=1200
     )
-    plt.show()
+    plt.close()
 
 
 def plot_multiple_replicas_correlation(
@@ -640,7 +640,7 @@ def plot_multiple_replicas_correlation(
       figure_path / f"multiple_replicas_correlation_{suffix}.png",
       transparent=True, bbox_inches='tight', dpi=1200
   )
-  plt.show()
+  plt.close()
 
 
 def correlation_analysis(
@@ -697,14 +697,14 @@ def correlation_analysis(
         figure_path / f"replica_section_correlation_ranks_{suffix}.png",
         transparent=True, bbox_inches='tight', dpi=1200
     )
-    plt.show()
+    plt.close()
     fig, ax = plot_corr_distribution(corr_df_rs)
     plt.tight_layout()
     plt.savefig(
         figure_path / f"replica_section_correlation_distribution_{suffix}.png",
         transparent=True, bbox_inches='tight', dpi=1200
     )
-    plt.show()
+    plt.close()
     # Plot multiple replicas correlation
     plot_multiple_replicas_correlation(corr_df_rs, figure_path, suffix)
     # Save the correlation matrices
