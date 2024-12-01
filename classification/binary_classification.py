@@ -575,7 +575,7 @@ def multiple_seeds_classification_with_parallel(
 
 def get_best_params_from_best_seed(
     model_output_dir: Path, who_grades_r: np.ndarray, who_grades_s: np.ndarray
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+) -> Tuple[Dict[str, Any], Dict[str, Any], int, int]:
   """ Function to get the best parameters from the best seed.
 
   Args:
@@ -585,8 +585,8 @@ def get_best_params_from_best_seed(
     who_grades_s (np.ndarray): WHO grades for non-bulk data (section).
   
   Returns:
-    Tuple[Dict[str, Any], Dict[str, Any]]: Best parameters for replica and 
-        section data.
+    Tuple[Dict[str, Any], Dict[str, Any], int, int]: Best parameters for 
+        replica and section data and the seeds used for classification.
 
   """
   # Initialize lists to store true labels and predictions
@@ -621,6 +621,64 @@ def get_best_params_from_best_seed(
       best_params_s = json.load(open(seed_dir / "best_params_s.json"))
       seed_s = int(seed_dir.stem.split("_")[-1])
   return best_params_r, best_params_s, seed_r, seed_s
+
+
+def get_params_from_median_seed(
+    model_output_dir: Path, who_grades_r: np.ndarray, who_grades_s: np.ndarray
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+  """ Function to get the parameters from the median seed.
+
+  Args:
+    model_output_dir (Path): Path to the output directory containing model 
+        saved results.
+    who_grades_r (np.ndarray): WHO grades for non-bulk data (replica).
+    who_grades_s (np.ndarray): WHO grades for non-bulk data (section).
+  
+  Returns:
+    Tuple[Dict[str, Any], Dict[str, Any], int, int]:  Median parameters for 
+        replica and section data and the seeds used for classification.
+
+  """
+  # Initialize lists to store AUC scores for each seed
+  auc_scores_r = []
+  auc_scores_s = []
+  seed_dirs = []
+  # Initialize lists to store true labels and predictions
+  y_true_r = (who_grades_r > 2).astype(int)
+  y_true_s = (who_grades_s > 2).astype(int)
+  # Loop through each seed and load the saved predictions
+  for seed_dir in model_output_dir.glob("seed_*"):
+    if len(list(seed_dir.glob("*.npy"))) == 0:
+      continue
+    # Load predicted probabilities
+    pred_r = np.load(seed_dir / "predicted_probabilities_r.npy")
+    pred_s = np.load(seed_dir / "predicted_probabilities_s.npy")
+    # Calculate ROC curves for each category
+    auc_r = roc_auc_score(y_true_r, pred_r)
+    auc_s = roc_auc_score(y_true_s, pred_s)
+    # Append scores and seed_dir
+    auc_scores_r.append((auc_r, seed_dir))
+    auc_scores_s.append((auc_s, seed_dir))
+    seed_dirs.append(seed_dir)
+  # Sort the scores
+  auc_scores_r.sort(key=lambda x: x[0])
+  auc_scores_s.sort(key=lambda x: x[0])
+  # Find median AUC seed directories
+  median_index_r = len(auc_scores_r) // 2
+  median_index_s = len(auc_scores_s) // 2
+  median_seed_dir_r = auc_scores_r[median_index_r][1] if auc_scores_r else None
+  median_seed_dir_s = auc_scores_s[median_index_s][1] if auc_scores_s else None
+  # Get the seeds
+  median_seed_r = int(
+      median_seed_dir_r.stem.split("_")[-1]
+  ) if median_seed_dir_r else None
+  median_seed_s = int(
+      median_seed_dir_s.stem.split("_")[-1]
+  ) if median_seed_dir_s else None
+  # Get the best parameters from the median seed
+  best_params_r = json.load(open(median_seed_dir_r / "best_params_r.json"))
+  best_params_s = json.load(open(median_seed_dir_s / "best_params_s.json"))
+  return best_params_r, best_params_s, median_seed_r, median_seed_s
 
 
 def single_seed_permutation(
@@ -726,7 +784,13 @@ def permutation_classification_with_parallel(
   # Create the output directory if it does not exist
   output_dir.mkdir(parents=True, exist_ok=True)
   # Get the best parameters from the best seed
+  """
   best_params_r, best_params_s, _, _ = get_best_params_from_best_seed(
+      model_dir, who_grades[sample_types == 'replica'],
+      who_grades[sample_types == 'section']
+  )
+  """
+  best_params_r, best_params_s, _, _ = get_params_from_median_seed(
       model_dir, who_grades[sample_types == 'replica'],
       who_grades[sample_types == 'section']
   )
@@ -793,6 +857,64 @@ def get_auc_from_best_seed(
       best_auc_s = auc_s
       best_auc_sr = roc_auc_score(y_true_r, pred_sr)
   return best_auc_r, best_auc_s, best_auc_rs, best_auc_sr
+
+
+def get_auc_from_median_seed(
+    model_output_dir: Path, who_grades_r: np.ndarray, who_grades_s: np.ndarray
+) -> Tuple[float, ...]:
+  """ Function to get the auc from the median seed.
+
+  Args:
+    model_output_dir (Path): Path to the output directory containing model 
+        saved results.
+    who_grades_r (np.ndarray): WHO grades for non-bulk data (replica).
+    who_grades_s (np.ndarray): WHO grades for non-bulk data (section).
+  
+  Returns:
+    Tuple[float, ...]: Median auc for replica, section, replica-section, and
+        section-replica.
+
+  """
+  # Initialize lists to store AUC scores for each seed
+  auc_scores_r = []
+  auc_scores_s = []
+  auc_scores_rs = []
+  auc_scores_sr = []
+  # Initialize lists to store true labels and predictions
+  y_true_r = (who_grades_r > 2).astype(int)
+  y_true_s = (who_grades_s > 2).astype(int)
+  # Loop through each seed and load the saved predictions
+  for seed_dir in model_output_dir.glob("seed_*"):
+    if len(list(seed_dir.glob("*.npy"))) == 0:
+      continue
+    # Load predicted probabilities
+    pred_r = np.load(seed_dir / "predicted_probabilities_r.npy")
+    pred_s = np.load(seed_dir / "predicted_probabilities_s.npy")
+    pred_rs = np.load(seed_dir / "predicted_probabilities_rs.npy")
+    pred_sr = np.load(seed_dir / "predicted_probabilities_sr.npy")
+    # Calculate AUC scores for each category
+    auc_r = roc_auc_score(y_true_r, pred_r)
+    auc_s = roc_auc_score(y_true_s, pred_s)
+    auc_rs = roc_auc_score(y_true_s, pred_rs)
+    auc_sr = roc_auc_score(y_true_r, pred_sr)
+    # Append scores and seed_dir
+    auc_scores_r.append(auc_r)
+    auc_scores_s.append(auc_s)
+    auc_scores_rs.append(auc_rs)
+    auc_scores_sr.append(auc_sr)
+  # Sort the scores
+  auc_scores_r.sort()
+  auc_scores_s.sort()
+  auc_scores_rs.sort()
+  auc_scores_sr.sort()
+  # Find median AUCs
+  median_auc_r = auc_scores_r[len(auc_scores_r) // 2] if auc_scores_r else None
+  median_auc_s = auc_scores_s[len(auc_scores_s) // 2] if auc_scores_s else None
+  median_auc_rs = auc_scores_rs[len(auc_scores_rs) //
+                                2] if auc_scores_rs else None
+  median_auc_sr = auc_scores_sr[len(auc_scores_sr) //
+                                2] if auc_scores_sr else None
+  return median_auc_r, median_auc_s, median_auc_rs, median_auc_sr
 
 
 def get_permutations_aucs(
@@ -1230,7 +1352,14 @@ def plot_and_save_figures(
   model_output_dir = figures_path / model_type
   permutation_output_path = figures_path / "permutation" / model_type
   # Get best auc from the best seed
+  """
   best_auc_r, best_auc_s, best_auc_rs, best_auc_sr = get_auc_from_best_seed(
+      model_output_dir, who_grades[sample_types == "replica"],
+      who_grades[sample_types == "section"]
+  )
+  """
+  # Get auc from the median seed
+  best_auc_r, best_auc_s, _, _ = get_auc_from_median_seed(
       model_output_dir, who_grades[sample_types == "replica"],
       who_grades[sample_types == "section"]
   )
@@ -1316,6 +1445,7 @@ def main(
       PRIMARY_SEED, n_iterations, model_type, processed_files, metadata_df,
       output_path, n_trials=50, n_jobs=-1
   )
+  
   # Run the permutation test
   permutation_output_path = figures_path / "permutation" / model_type
   permutation_classification_with_parallel(
