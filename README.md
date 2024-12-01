@@ -1,6 +1,6 @@
 ![NANOBIOPSY logo](./logo.png)
 
-# Nanoneedles Enable Spatiotemporal Lipidomics for Glioma Profiling
+# Nanoneedles Enable Spatiotemporal Lipidomics of Living Tissues
 
 Chenlei Gu<sup>1,2*</sup>, Davide Alessandro Martella<sup>1,2*</sup>, Leor Ariel Rose<sup>3*</sup>, Nadia Rouatbi<sup>4</sup>, Cong Wang<sup>1,2,5</sup>, Alaa Zam<sup>4</sup>, Valeria Caprettini<sup>1,2</sup>, Magnus Jensen<sup>1</sup>, Cathleen Hagemann<sup>1,6</sup>, Andrea Serio<sup>1,6</sup>, Vincenzo Abbate<sup>4</sup>, Khuloud Al-Jamal<sup>4</sup>, Maddy Parsons<sup>7</sup>, Mads S. Bergholt<sup>1</sup>, Paul Brennan<sup>8</sup>, Assaf Zaritsky<sup>3</sup>, Ciro Chiappini<sup>1,2</sup>
 
